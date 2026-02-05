@@ -8,6 +8,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="ReaderMaster" secondary="true" icon="AllIcons.Actions.Preview" anchor="right"
                     factoryClass="com.shaoYe.reader.EpubToolWindowFactory"/>
+        <projectService serviceImplementation="com.shaoYe.reader.ReaderService"/>
     </extensions>
 
     <actions>

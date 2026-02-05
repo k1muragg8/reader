@@ -30,7 +30,9 @@ class ReaderService(private val project: Project) {
         private const val KEY_LAST_PATH = "READER_MASTER_LAST_PATH"
         private const val KEY_LAST_PROGRESS = "READER_MASTER_LAST_PROGRESS"
         
-        fun getInstance(project: Project): ReaderService = project.getService(ReaderService::class.java)
+        fun getInstance(project: Project): ReaderService {
+            return project.getService(ReaderService::class.java)
+        }
     }
 
     fun initBrowser(jbCefBrowser: JBCefBrowser) {
@@ -47,8 +49,6 @@ class ReaderService(private val project: Project) {
         saveProgressQuery = JBCefJSQuery.create(jbCefBrowser)
         saveProgressQuery?.addHandler { progressStr ->
             // Save progress (0.0 to 1.0, or page index)
-            // User requested "Restore Page". Let's assume the string is the scrollLeft value or percentage.
-            // Actually, best to save the raw value passed from JS.
             try {
                 PropertiesComponent.getInstance(project).setValue(KEY_LAST_PROGRESS, progressStr)
             } catch (e: Exception) {}
@@ -93,8 +93,6 @@ class ReaderService(private val project: Project) {
         val lastProgress = PropertiesComponent.getInstance(project).getValue(KEY_LAST_PROGRESS)
         if (!lastProgress.isNullOrEmpty()) {
              // Execute JS to restore.
-             // We wait a tiny bit for layout? Or just execute. 
-             // "window.readerRestore(val)" must be defined in EpubParser HTML.
              browser?.executeJavaScript("if(window.readerRestore) window.readerRestore('$lastProgress');", browser?.url, 0)
         }
     }
@@ -121,6 +119,7 @@ class ReaderService(private val project: Project) {
             override fun run(indicator: ProgressIndicator) {
                 try {
                     indicator.text = "Parsing EPUB..."
+                    // HEAVY LIFTING (Background Thread)
                     val isDarcula = com.intellij.util.ui.StartupUiUtil.isUnderDarcula
                     val htmlContent = EpubParser.loadEpub(file, isDarcula)
                     

@@ -21,6 +21,7 @@ object EpubParser {
             }
         }
         
+        // MANDATORY: CSP INJECTION FOR DATA URI SUPPORT
         return """
             <!DOCTYPE html>
             <html lang='en'>
@@ -307,6 +308,7 @@ object EpubParser {
         val book = epubReader.readEpub(file.inputStream())
         
         // --- STEP 1: INVENTORY (LOG EVERYTHING) ---
+        // Requirement 1: Robust Image Map (Key 1: Full Path, Key 2: Filename)
         val imageMap = mutableMapOf<String, String>()
         println("📚 STARTING EPUB IMAGE INVENTORY 📚")
         
@@ -319,8 +321,12 @@ object EpubParser {
                 println("📚 EPUB Resource found: [${res.href}] -> Filename: [$filename]")
                 
                 try {
+                    // Requirement 2: Strict Base64 Sanitization (No newlines)
                     val b64 = Base64.getEncoder().encodeToString(res.data).replace(Regex("\\s"), "")
                     val dataUri = "data:$mime;base64,$b64"
+                    
+                    // Store BOTH full href and simple filename for maximum matching success
+                    imageMap[href.lowercase(Locale.getDefault())] = dataUri
                     imageMap[filename.lowercase(Locale.getDefault())] = dataUri
                 } catch (e: Exception) {
                     println("❌ Failed to encode ${res.href}: ${e.message}")
@@ -343,18 +349,33 @@ object EpubParser {
             val doc = Jsoup.parse(rawHtml)
             
             // --- STEP 2: THE "DESPERATE" MATCHER ---
-            for (img in doc.select("img")) {
-                val src = img.attr("src")
+            // Requirement 4: Support both <img> and <image> (SVG)
+            val allImages = doc.select("img, image")
+            
+            for (img in allImages) {
+                // Determine attribute: src for img, xlink:href for image (SVG)
+                val isSvgImage = img.tagName().equals("image", ignoreCase = true)
+                val attrName = if (isSvgImage) "xlink:href" else "src"
+                
+                var src = img.attr(attrName)
+                if (src.isEmpty() && isSvgImage) src = img.attr("href") // Fallback for simple href
+                
                 println("🖼️ HTML requesting src: [$src]")
                 
                 // Strategy: Clean the src
-                val filename = src.substringAfterLast('/').lowercase(Locale.getDefault()).replace("%20", " ")
-                val found = imageMap.containsKey(filename)
+                val rawKey = src.substringAfterLast('/').lowercase(Locale.getDefault()).replace("%20", " ")
+                // Also try full path matching (heuristic: if src contains /, allow it)
+                val fullKey = src.lowercase(Locale.getDefault())
                 
-                println("   👉 Trying to match key: [$filename] -> Result: ${if (found) "SUCCESS" else "FAILED"}")
+                var finalData: String? = null
+                if (imageMap.containsKey(rawKey)) finalData = imageMap[rawKey]
+                else if (imageMap.containsKey(fullKey)) finalData = imageMap[fullKey]
                 
-                if (found) {
-                    img.attr("src", imageMap[filename])
+                println("   👉 Trying to match key: [$rawKey] -> Result: ${if (finalData != null) "SUCCESS" else "FAILED"}")
+                
+                if (finalData != null) {
+                    img.attr(attrName, finalData)
+                    if (isSvgImage) img.attr("href", finalData) // Redundancy for safety
                 }
             }
             
@@ -376,9 +397,7 @@ object EpubParser {
          return getAppHtml(emptyList(), "<div style='display:flex;height:100%;justify-content:center;align-items:center;opacity:0.5;'><h2>Click 📂 to Open</h2></div>", colors)
     }
     
-
-    
-    // STRICT MIME DETECTION
+    // Requirement 3: Strict MIME Type Detection
     private fun getMimeType(href: String): String? {
         val name = href.lowercase(Locale.getDefault())
         return when {
