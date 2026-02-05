@@ -113,7 +113,7 @@ class ReaderService(private val project: Project) {
         if (browser == null) return
         try {
             val isDarcula = com.intellij.util.ui.StartupUiUtil.isUnderDarcula
-            val htmlContent = EpubParser.parse(file, isDarcula)
+            val htmlContent = EpubParser.loadEpub(file, isDarcula)
             browser?.loadHTML(htmlContent, "http://readermaster/") 
         } catch (e: Exception) {
             browser?.loadHTML("<html><body><h1 style='color:red;'>Error: ${e.message}</h1></body></html>")

@@ -301,18 +301,37 @@ object EpubParser {
         """.trimIndent()
     }
 
-    fun parse(file: File, isDarcula: Boolean): String {
+    fun loadEpub(file: File, isDarcula: Boolean): String {
         val epubReader = EpubReader()
         val book = epubReader.readEpub(file.inputStream())
         
-        // 1. UNIVERSAL RESOURCE WAREHOUSE
-        val imageMap = setupUniversalMap(book)
+        // --- STEP 1: INVENTORY (LOG EVERYTHING) ---
+        val imageMap = mutableMapOf<String, String>()
+        println("📚 STARTING EPUB IMAGE INVENTORY 📚")
         
-        // 2. THEME
+        for (res in book.resources.all) {
+            val href = res.href
+            val mime = getMimeType(href)
+            
+            if (mime != null && mime.startsWith("image/")) {
+                val filename = href.substringAfterLast('/')
+                println("📚 EPUB Resource found: [${res.href}] -> Filename: [$filename]")
+                
+                try {
+                    val b64 = Base64.getEncoder().encodeToString(res.data)
+                    val dataUri = "data:$mime;base64,$b64"
+                    imageMap[filename.lowercase(Locale.getDefault())] = dataUri
+                } catch (e: Exception) {
+                    println("❌ Failed to encode ${res.href}: ${e.message}")
+                }
+            }
+        }
+
+        // --- THEME ---
         val colors = if (isDarcula) ThemeColors("#2b2d30", "#a9b7c6", "#3c3f41", "#4e5254", "#4c5052") 
                      else ThemeColors("#ffffff", "#333333", "#f2f2f2", "#d0d0d0", "#e6e6e6")
 
-        // 3. BUILD CONTENT
+        // --- BUILD CONTENT ---
         val sb = StringBuilder()
         var chapterIndex = 0
         val tocItems = extractTocItems(book)
@@ -322,36 +341,19 @@ object EpubParser {
             val rawHtml = String(res.data, Charset.forName(res.inputEncoding ?: "UTF-8"))
             val doc = Jsoup.parse(rawHtml)
             
-            // --- UNIVERSAL LOOKUP ---
+            // --- STEP 2: THE "DESPERATE" MATCHER ---
             for (img in doc.select("img")) {
                 val src = img.attr("src")
+                println("🖼️ HTML requesting src: [$src]")
                 
-                // A. Clean
-                val cleanSrc = URLDecoder.decode(src, "UTF-8").replace("\\", "/")
+                // Strategy: Clean the src
+                val filename = src.substringAfterLast('/').lowercase(Locale.getDefault()).replace("%20", " ")
+                val found = imageMap.containsKey(filename)
                 
-                // B. Extract Filename
-                val filename = cleanSrc.substringAfterLast("/")
+                println("   👉 Trying to match key: [$filename] -> Result: ${if (found) "SUCCESS" else "FAILED"}")
                 
-                // C. Hunt
-                var dataUri = imageMap[cleanSrc] // Try path
-                if (dataUri == null) dataUri = imageMap[filename] // Try filename
-                
-                // Try Case-Insensitive keys (Slow but robust)
-                if (dataUri == null) {
-                    val lowerKey = filename.lowercase(Locale.getDefault())
-                    for ((k, v) in imageMap) {
-                        if (k.lowercase(Locale.getDefault()).endsWith(lowerKey)) {
-                            dataUri = v
-                            break
-                        }
-                    }
-                }
-                
-                // D. Inject & Log
-                println("Looking for image: $src -> found: ${dataUri != null}")
-                
-                if (dataUri != null) {
-                    img.attr("src", dataUri)
+                if (found) {
+                    img.attr("src", imageMap[filename])
                 }
             }
             
@@ -373,34 +375,7 @@ object EpubParser {
          return getAppHtml(emptyList(), "<div style='display:flex;height:100%;justify-content:center;align-items:center;opacity:0.5;'><h2>Click 📂 to Open</h2></div>", colors)
     }
     
-    // --- UNIVERSAL MAP SETUP ---
-    private fun setupUniversalMap(book: Book): Map<String, String> {
-        val map = mutableMapOf<String, String>()
-        for (res in book.resources.all) {
-             val mime = getMimeType(res.href) ?: "application/octet-stream"
-             if (mime.startsWith("image/")) {
-                 try {
-                     val b64 = Base64.getEncoder().encodeToString(res.data)
-                     val dataUri = "data:$mime;base64,$b64"
-                     
-                     // Key 1: Full Href (Clean)
-                     map[res.href] = dataUri
-                     
-                     // Key 2: Filename Only
-                     val filename = res.href.substringAfterLast("/")
-                     map[filename] = dataUri
-                     
-                     // Key 3: Decoded Filename (e.g. "Space Image.jpg")
-                     try {
-                         val decoded = URLDecoder.decode(filename, "UTF-8")
-                         if (decoded != filename) map[decoded] = dataUri
-                     } catch(e: Exception) {}
-                     
-                 } catch (e: Exception) {}
-             }
-        }
-        return map
-    }
+
     
     // STRICT MIME DETECTION
     private fun getMimeType(href: String): String? {
