@@ -1,0 +1,28 @@
+<idea-plugin>
+    <id>com.shaoYe.reader</id>
+    <name>Reader Master</name>
+    <vendor>ShaoYe</vendor>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="ReaderMaster" secondary="true" icon="AllIcons.Actions.Preview" anchor="right"
+                    factoryClass="com.shaoYe.reader.EpubToolWindowFactory"/>
+    </extensions>
+
+    <actions>
+        <action id="ShaoYe.NextPage" class="com.shaoYe.reader.NextPageAction" text="下一页 (Next Page)" description="翻到下一页">
+            <keyboard-shortcut keymap="$default" first-keystroke="RIGHT"/>
+        </action>
+        <action id="ShaoYe.PrevPage" class="com.shaoYe.reader.PrevPageAction" text="上一页 (Prev Page)" description="翻到上一页">
+            <keyboard-shortcut keymap="$default" first-keystroke="LEFT"/>
+        </action>
+        <action id="ShaoYe.ZoomIn" class="com.shaoYe.reader.ZoomInAction" text="放大字体 (Zoom In)" description="放大字体">
+            <keyboard-shortcut keymap="$default" first-keystroke="alt EQUALS"/>
+        </action>
+        <action id="ShaoYe.ZoomOut" class="com.shaoYe.reader.ZoomOutAction" text="缩小字体 (Zoom Out)" description="缩小字体">
+            <keyboard-shortcut keymap="$default" first-keystroke="alt MINUS"/>
+        </action>
+
+    </actions>
+</idea-plugin>
