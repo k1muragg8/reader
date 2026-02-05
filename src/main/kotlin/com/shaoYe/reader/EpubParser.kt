@@ -122,7 +122,7 @@ object EpubParser {
                     
                     #reader-text {
                         height: 100%; width: 100%;
-                        column-width: 100vw; column-gap: 0; column-fill: auto;
+//                        column-width: 100vw; column-gap: 0; column-fill: auto;
                     }
                     
                     /* JUMP INPUT (Ins Style) */
@@ -146,7 +146,7 @@ object EpubParser {
                     
                     /* EPUB STYLES */
                     .chapter { break-before: column; }
-                    .page-content { padding: 20px 48px; margin: 0; width: 100%; box-sizing: border-box; max-width: 800px; margin: 0 auto; }
+                    .page-content { padding: 20px 16px; margin: 0; width: 100%; box-sizing: border-box; margin: 0 auto; }
                     p { line-height: 1.8; margin-bottom: 1.2em; text-align: justify; font-size: 16px; letter-spacing: 0.01em; }
                     img { max-width: 100%; height: auto; display: block; margin: 20px auto; border-radius: 8px; }
                     
