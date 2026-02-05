@@ -9,7 +9,7 @@
   <p>Reader Master: A high-performance EPUB reader integrated into your IDE. Read technical books while coding.</p>
   <ul>
     <li><b>Controls</b>: Use Arrows or A/D keys to flip pages.</li>
-    <li><b>No Shadow</b>: Full-width layout optimized for IDE tool windows.</li>
+    <li><b>Persistence</b>: Automatically saves your reading progress.</li>
     <li><b>Contact</b>: k1muragg8@gmail.com</li>
   </ul>
 
@@ -19,17 +19,17 @@
   <p>Reader Master (阅读大师)：集成于 IDE 内部的高性能 EPUB 阅读器。让您在编写代码的同时无缝阅读技术书籍。</p>
   <ul>
     <li><b>快捷翻页</b>：支持左右方向键或 A/D 键。</li>
-    <li><b>极致排版</b>：彻底去除左侧阴影与大边距，文字占满屏幕。</li>
+    <li><b>进度记忆</b>：自动保存上次阅读的书籍及具体位置。</li>
     <li><b>联系作者</b>：k1muragg8@gmail.com</li>
   </ul>
 
   <hr/>
 
   <h3>日本語</h3>
-  <p>Reader Master：IDEに統合された高性能EPUBリーダー。コードを書きながら技術書やドキュメントをスムーズに閲覧できます。</p>
+  <p>Reader Master：IDEに統合された高性能EPUBリーダー。コードを書きながら技術書をスムーズに閲覧できます。</p>
   <ul>
     <li><b>操作方法</b>：矢印キーまたは A/D キーでページをめくることができます。</li>
-    <li><b>全画面表示</b>：サイドバーに最適化され、余計な余白や影を排除しました。</li>
+    <li><b>自動保存</b>：読書の進捗状況を自動的に保存します。</li>
     <li><b>連絡先</b>：k1muragg8@gmail.com</li>
   </ul>
     ]]></description>

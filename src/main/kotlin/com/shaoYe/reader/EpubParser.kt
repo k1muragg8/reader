@@ -20,7 +20,7 @@ object EpubParser {
                 "<div class='toc-item' onclick=\"scrollToId('${it.htmlId}')\">${it.title}</div>"
             }
         }
-        
+
         // MANDATORY: CSP INJECTION FOR DATA URI SUPPORT
         return """
             <!DOCTYPE html>
@@ -29,40 +29,99 @@ object EpubParser {
                 <meta charset='UTF-8'>
                 <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data:;">
                 <style>
-                    /* --- READER MASTER v18 UNIVERSAL --- */
+                    /* --- READER MASTER v1.0.0 (INSTA-MINIMAL) --- */
                     :root {
                         --bg: ${colors.bg}; --text: ${colors.text};
-                        --sidebar: ${colors.sidebarBg}; --border: ${colors.border};
-                        --hover: ${colors.hover};
-                        --footer-text: #888;
+                        --border: ${colors.border};
+                        --icon-stroke: ${colors.text}; /* Adaptive stroke color */
+                        --hover-bg: ${if (colors.bg.startsWith("#2")) "rgba(255,255,255,0.08)" else "rgba(0,0,0,0.04)"};
                     }
                     
                     body { 
-                        font-family: sans-serif; 
-                        line-height: 1.6; 
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                         margin: 0 !important; 
-                        padding: 10px 15px !important; 
+                        padding: 0 !important; 
                         width: 100% !important; 
                         max-width: none !important; 
                         box-sizing: border-box !important;
                         background-color: var(--bg); 
                         color: var(--text); 
+                        overflow: hidden; 
                     }
                     * { box-sizing: border-box; }
                     
-                    #app-container {
-                        position: relative; width: 100%; height: 100%; overflow: hidden;
+                    /* TOOLBAR (Pure Minimalist) */
+                    #toolbar {
+                        position: fixed; top: 0; left: 0; right: 0; height: 50px; 
+                        background: var(--bg); 
+                        /* No border, just clean space */
+                        /* border-bottom: 1px solid var(--border); */ 
+                        display: flex; align-items: center; justify-content: space-between;
+                        padding: 0 16px; z-index: 1000;
+                        user-select: none;
                     }
                     
+                    .toolbar-group {
+                        display: flex; align-items: center; gap: 20px; /* Air gap */
+                    }
+
+                    /* ICON BUTTONS (SVG WRAPPERS) */
+                    .icon-btn {
+                        width: 32px; height: 32px;
+                        background: transparent; border: none; 
+                        padding: 4px;
+                        cursor: pointer;
+                        display: flex; align-items: center; justify-content: center;
+                        border-radius: 50%; /* Rounded touch targets */
+                        transition: transform 0.1s ease, background 0.2s;
+                        opacity: 0.8;
+                    }
+                    .icon-btn:hover { 
+                        opacity: 1;
+                        background: var(--hover-bg);
+                    }
+                    .icon-btn:active { transform: scale(0.92); }
+
+                    /* SVG STYLES */
+                    .feather {
+                        width: 20px; height: 20px;
+                        fill: none;
+                        stroke: var(--icon-stroke);
+                        stroke-width: 2px;
+                        stroke-linecap: round;
+                        stroke-linejoin: round;
+                    }
+
+                    /* MINIMAL INPUT */
+                    #jump-container {
+                        position: relative;
+                        display: flex; align-items: center; justify-content: center;
+                    }
+                    #jump-input {
+                        width: 42px; height: 26px; 
+                        background: transparent; color: var(--text); 
+                        border: 1px solid var(--icon-stroke); border-radius: 6px;
+                        text-align: center; font-size: 13px; font-weight: 500;
+                        opacity: 0.6;
+                        transition: opacity 0.2s, width 0.2s;
+                    }
+                    #jump-input:focus { opacity: 1; outline: none; width: 50px; }
+                    /* Hide arrows */
+                    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+                    
+                    /* CONTENT CONTAINER */
+                    #content {
+                        position: absolute; top: 50px; bottom: 0; left: 0; right: 0;
+                        overflow: hidden;
+                    }
+
                     /* READER WRAPPER */
                     #reader-wrapper {
-                        position: absolute; top: 32px; bottom: 24px; left: 0; right: 0;
+                        width: 100%; height: 100%;
                         overflow-x: scroll; overflow-y: hidden;
-                        outline: none;
-                        
-                        /* SCROLL SNAP */
                         scroll-snap-type: x mandatory;
                         scroll-behavior: smooth;
+                        outline: none;
                     }
                     
                     #reader-text {
@@ -70,108 +129,92 @@ object EpubParser {
                         column-width: 100vw; column-gap: 0; column-fill: auto;
                     }
                     
-                    /* HIDE SCROLLBARS */
+                    /* EPUB STYLES */
+                    .chapter { break-before: column; }
+                    .page-content { padding: 20px 48px; margin: 0; width: 100%; box-sizing: border-box; max-width: 800px; margin: 0 auto; }
+                    p { line-height: 1.8; margin-bottom: 1.2em; text-align: justify; font-size: 16px; letter-spacing: 0.01em; }
+                    img { max-width: 100%; height: auto; display: block; margin: 20px auto; border-radius: 8px; }
+                    
                     ::-webkit-scrollbar { display: none !important; }
 
-                    /* FOOTER */
-                    #footer {
-                        position: absolute; bottom: 0; left: 0; right: 0; height: 24px;
-                        background: var(--bg); border-top: 1px solid var(--border);
-                        display: flex; align-items: center; justify-content: space-between;
-                        padding: 0 12px; font-size: 11px; color: var(--footer-text);
-                        z-index: 600; user-select: none;
-                        font-variant-numeric: tabular-nums;
-                    }
-
-                    /* TOC OVERLAY */
+                    /* SIDEBAR (TOC) */
                     #sidebar {
-                        position: absolute; top: 0; left: 0; bottom: 0; width: 260px;
-                        background: var(--sidebar); border-right: 1px solid var(--border);
-                        transform: translateX(-100%); transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
-                        z-index: 1000; display: flex; flex-direction: column;
-                        box-shadow: 4px 0 16px rgba(0,0,0,0.25);
+                        position: absolute; top: 0; left: 0; bottom: 0; width: 280px;
+                        background: var(--bg); border-right: 1px solid var(--border);
+                        transform: translateX(-100%); transition: transform 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+                        z-index: 2000; display: flex; flex-direction: column;
+                        box-shadow: none !important;
+                        padding-top: 20px;
                     }
                     #sidebar.open { transform: translateX(0); }
-                    
                     .sidebar-header {
-                        padding: 0 12px; height: 32px; border-bottom: 1px solid var(--border);
-                        font-weight: 600; font-size: 11px; display: flex; align-items: center; justify-content: space-between;
+                         padding: 0 20px 15px; font-weight: 700; font-size: 18px; letter-spacing: -0.5px;
+                         border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
                     }
-                    .toc-list { flex: 1; overflow-y: auto; }
-                    .toc-item {
-                        padding: 8px 12px; border-bottom: 1px solid var(--border);
-                        font-size: 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-                        transition: background 0.1s;
+                    .toc-list { flex: 1; overflow-y: auto; padding: 10px 0; }
+                    .toc-item { 
+                        padding: 12px 20px; font-size: 14px; cursor: pointer; color: var(--text); opacity: 0.8; 
+                        border-left: 2px solid transparent; transition: all 0.2s;
                     }
-                    .toc-item:hover { background: var(--hover); }
-
-                    #sidebar-backdrop {
-                         position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-                         background: rgba(0,0,0,0.4); z-index: 900; display: none;
-                    }
+                    .toc-item:hover { background: var(--hover-bg); opacity: 1; border-left-color: var(--icon-stroke); }
+                    #sidebar-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.3); z-index: 1500; backdrop-filter: blur(2px); display: none; }
                     #sidebar.open + #sidebar-backdrop { display: block; }
-
-                    /* HEADER */
-                    #header {
-                        position: absolute; top: 0; left: 0; right: 0; height: 32px;
-                        background: var(--bg); border-bottom: 1px solid var(--border);
-                        display: flex; align-items: center; padding: 0 8px; gap: 6px; z-index: 500;
-                    }
-                    .icon-btn {
-                        width: 20px; height: 20px; background: transparent; border: none;
-                        border-radius: 3px; color: var(--text); cursor: pointer;
-                        display: flex; align-items: center; justify-content: center;
-                        font-family: inherit;
-                    }
-                    .icon-btn:hover { background: var(--hover); }
-                    
-                    #jump-input {
-                        width: 32px; height: 18px; font-size: 11px; text-align: center;
-                        background: transparent; color: var(--text); border: 1px solid var(--border);
-                        border-radius: 2px;
-                    }
-                    #jump-input:focus { border-color: #555; outline: none; }
-
-                    /* EPUB CONTENT */
-                    .chapter { break-before: column; }
-                    .page-content { padding: 12px; margin: 0; width: 100%; box-sizing: border-box; }
-                    p { line-height: 1.6; margin-bottom: 0.8em; text-align: justify; font-size: 16px; }
-                    img { max-width: 100%; height: auto; display: block; margin: 10px 0; }
                 </style>
             </head>
             <body>
-                <div id="app-container">
-                    <!-- TOC -->
-                    <div id="sidebar">
-                        <div class="sidebar-header">CONTENTS <span class="icon-btn" onclick="toggleSidebar()">✕</span></div>
-                        <div class="toc-list">$tocListHtml</div>
+                <div id="toolbar">
+                    <!-- Left: Menu & Open -->
+                    <div class="toolbar-group">
+                        <button class="icon-btn" title="Chapters" onclick="toggleSidebar()">
+                            <svg class="feather" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                        </button>
+                        <button class="icon-btn" title="Open File" onclick="window.readerBridge.openFile()">
+                            <svg class="feather" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        </button>
                     </div>
-                    <div id="sidebar-backdrop" onclick="toggleSidebar()"></div>
-                    
-                    <!-- HEADER -->
-                    <div id="header">
-                        <button class="icon-btn" onclick="toggleSidebar()">☰</button>
-                        <span style="width:1px;height:12px;background:var(--border);"></span>
-                        <button class="icon-btn" onclick="window.readerBridge.openFile()">📂</button>
-                        <span style="width:1px;height:12px;background:var(--border);"></span>
-                        <button class="icon-btn" onclick="navPrev()">◀</button>
-                        <input type="number" id="jump-input" placeholder="#" onkeydown="checkJump(event)">
-                        <button class="icon-btn" onclick="navNext()">▶</button>
-                        <span style="flex:1;"></span>
-                        <button class="icon-btn" onclick="zoomIn()">A+</button>
-                        <button class="icon-btn" onclick="zoomOut()">A-</button>
+
+                    <!-- Center: Navigation -->
+                    <div class="toolbar-group">
+                        <button class="icon-btn" title="Previous" onclick="navPrev()">
+                            <svg class="feather" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        
+                        <div id="jump-container">
+                             <input type="number" id="jump-input" placeholder="#" onkeydown="checkJump(event)">
+                        </div>
+
+                        <button class="icon-btn" title="Next" onclick="navNext()">
+                            <svg class="feather" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </button>
                     </div>
-                    
-                    <!-- READER -->
+
+                    <!-- Right: Zoom -->
+                    <div class="toolbar-group">
+                        <button class="icon-btn" title="Zoom Out" onclick="zoomOut()">
+                            <svg class="feather" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                        <button class="icon-btn" title="Zoom In" onclick="zoomIn()">
+                             <svg class="feather" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- TOC Sidebar -->
+                <div id="sidebar">
+                    <div class="sidebar-header">Chapters <span style="font-size: 24px; cursor: pointer;" onclick="toggleSidebar()">×</span></div>
+                    <div class="toc-list">$tocListHtml</div>
+                </div>
+                <div id="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+                <div id="content">
                     <div id="reader-wrapper" tabindex="0">
                         <div id="reader-text">$contentHtml</div>
                     </div>
-                    
-                    <!-- FOOTER -->
-                    <div id="footer">
-                        <span id="footer-prog">Page 1</span>
-                        <span id="footer-pct">0%</span>
-                    </div>
+                </div>
+                
+                <!-- FOOTER (Minimal) -->
+                <div style="position:fixed; bottom:12px; left:0; right:0; text-align:center; font-size:10px; opacity:0.3; pointer-events:none;">
+                    <span id="footer-prog"></span>
                 </div>
 
                 <script>
@@ -179,94 +222,32 @@ object EpubParser {
                     const textContainer = document.getElementById('reader-text');
                     const jumpInput = document.getElementById('jump-input');
                     const footerProg = document.getElementById('footer-prog');
-                    const footerPct = document.getElementById('footer-pct');
                     
                     let currentFontSize = 16;
                     let saveTimeout = null;
 
-                    // --- LAYOUT & RESIZE ---
+                    // --- LAYOUT ---
                     function updateLayout(width) {
                         const w = width || window.innerWidth;
                         if(w > 0) {
-                            textContainer.style.width = 'auto'; // Reset
+                            textContainer.style.width = 'auto'; 
                             textContainer.style.columnWidth = w + 'px';
                         }
-                        updateDashboard();
+                        updateProgress();
                     }
-
                     const observer = new ResizeObserver(entries => {
                          for(let entry of entries) {
-                             const newWidth = entry.contentRect.width;
-                             if(newWidth > 0) {
-                                 // Preserve Page Index
+                             if(entry.contentRect.width > 0) {
                                  const idx = Math.round(wrapper.scrollLeft / (wrapper.clientWidth || 1));
-                                 
-                                 updateLayout(newWidth);
-                                 
-                                 // Instant Snap
-                                 wrapper.scrollTo({ left: idx * newWidth, behavior: 'instant' });
+                                 updateLayout(entry.contentRect.width);
+                                 wrapper.scrollTo({ left: idx * entry.contentRect.width, behavior: 'instant' });
                              }
                          }
                     });
                     observer.observe(wrapper);
                     window.onload = () => { updateLayout(); wrapper.focus(); };
 
-                    // --- JUMP UX (FIXED) ---
-                    function checkJump(e) {
-                         // Fix: "Input Clear Logic"
-                         if (e.key === 'Enter') {
-                             const val = parseInt(jumpInput.value);
-                             if (val > 0) {
-                                 const w = wrapper.clientWidth;
-                                 wrapper.scrollTo({ left: (val-1) * w, behavior: 'auto' });
-                             }
-                             jumpInput.value = ''; // FORCE CLEAR
-                             jumpInput.blur();     // REMOVE FOCUS
-                         }
-                    }
-
-                    // --- DASHBOARD & PERSISTENCE ---
-                    wrapper.addEventListener('scroll', () => {
-                        updateDashboard();
-                        
-                        // Save Progress (Debounce)
-                        if(saveTimeout) clearTimeout(saveTimeout);
-                        saveTimeout = setTimeout(() => {
-                            const w = wrapper.clientWidth;
-                            if(w > 0) {
-                                const idx = Math.round(wrapper.scrollLeft / w);
-                                if(window.readerBridge) {
-                                    window.readerBridge.saveProgress(idx.toString());
-                                }
-                            }
-                        }, 500);
-                    });
-                    
-                    function updateDashboard() {
-                        const w = wrapper.clientWidth;
-                        if(w <= 0) return;
-                        
-                        const current = Math.round(wrapper.scrollLeft / w) + 1;
-                        const total = Math.ceil(wrapper.scrollWidth / w) || 1;
-                        
-                        footerProg.textContent = `Page ` + current + ` / ` + total;
-                        footerPct.textContent = Math.round((current/total)*100) + `%`;
-                    }
-                    
-                    // RESTORE
-                    window.readerRestore = function(savedIdxStr) {
-                        if(!savedIdxStr) return;
-                        const idx = parseInt(savedIdxStr);
-                        if(idx >= 0) {
-                             setTimeout(() => {
-                                 const w = wrapper.clientWidth;
-                                 wrapper.scrollTo({ left: idx * w, behavior: 'instant' });
-                                 updateDashboard();
-                             }, 150);
-                        }
-                    };
-
-                    // --- NAV ---
+                    // --- NAVIGATION ---
                     function navNext() { 
                          const w = wrapper.clientWidth;
                          const idx = Math.round(wrapper.scrollLeft / w);
@@ -278,32 +259,65 @@ object EpubParser {
                          wrapper.scrollTo({ left: (idx - 1) * w, behavior: 'smooth' });
                     }
                     
-                    // --- ACTIONS ---
-                    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+                    // --- JUMP ---
+                    function manualJump() {
+                         const val = parseInt(jumpInput.value);
+                         if (val > 0) {
+                             const w = wrapper.clientWidth;
+                             wrapper.scrollTo({ left: (val-1) * w, behavior: 'auto' });
+                             jumpInput.value = ''; jumpInput.blur();
+                         }
+                    }
+                    function checkJump(e) { if (e.key === 'Enter') manualJump(); }
+
+                    // --- ZOOM ---
                     function zoomIn() { currentFontSize++; applyFont(); }
                     function zoomOut() { if(currentFontSize>10)currentFontSize--; applyFont(); }
                     function applyFont() { document.body.style.fontSize = currentFontSize+'px'; }
-                    
+
+                    // --- TOC ---
+                    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
                     function scrollToId(id) {
                          const el = document.getElementById(id);
-                         if(el) {
-                             el.scrollIntoView();
-                             toggleSidebar();
-                         }
+                         if(el) { el.scrollIntoView(); toggleSidebar(); }
                     }
-                    
-                    // HOTKEYS
-                    document.addEventListener('keydown', function(e) {
-                         const key = e.key.toLowerCase();
-                         if (document.activeElement === jumpInput && key !== 'enter') return;
-                         
-                         if (key === 'arrowright' || key === 'd') {
-                             window.readerNext();
-                         } else if (key === 'arrowleft' || key === 'a') {
-                             window.readerPrev();
-                         }
+
+                    // --- PERSISTENCE & PROGRESS ---
+                    wrapper.addEventListener('scroll', () => {
+                        updateProgress();
+                        if(saveTimeout) clearTimeout(saveTimeout);
+                        saveTimeout = setTimeout(() => {
+                            const w = wrapper.clientWidth;
+                            if(w > 0 && window.readerBridge) {
+                                const idx = Math.round(wrapper.scrollLeft / w);
+                                window.readerBridge.saveProgress(idx.toString());
+                            }
+                        }, 500);
                     });
                     
+                    function updateProgress() {
+                        const w = wrapper.clientWidth;
+                        if(w > 0) {
+                             const current = Math.round(wrapper.scrollLeft / w) + 1;
+                             const total = Math.ceil(wrapper.scrollWidth / w) || 1;
+                             footerProg.textContent = current + ' / ' + total;
+                        }
+                    }
+                    
+                    window.readerRestore = function(s) {
+                        const i = parseInt(s);
+                        if(i >= 0) setTimeout(() => wrapper.scrollTo({ left: i * wrapper.clientWidth, behavior: 'instant' }), 100);
+                    };
+
+                    // --- HOTKEYS ---
+                    document.addEventListener('keydown', function(e) {
+                         const k = e.key.toLowerCase();
+                         if (document.activeElement === jumpInput && k !== 'enter') return;
+                         if (k === 'arrowright' || k === 'd') navNext();
+                         else if (k === 'arrowleft' || k === 'a') navPrev();
+                    });
+                    
+                    // EXPOSE
                     window.readerNext = navNext;
                     window.readerPrev = navPrev;
                     window.readerZoomIn = zoomIn;
@@ -311,6 +325,7 @@ object EpubParser {
                 </script>
             </body>
             </html>
+
         """.trimIndent()
     }
 
