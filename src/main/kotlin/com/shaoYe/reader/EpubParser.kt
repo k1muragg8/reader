@@ -57,19 +57,19 @@ object EpubParser {
                         /* No border, just clean space */
                         /* border-bottom: 1px solid var(--border); */ 
                         display: flex; align-items: center; justify-content: space-between;
-                        padding: 0 16px; z-index: 1000;
+                        padding: 0 4px; z-index: 1000;
                         user-select: none;
                     }
                     
                     .toolbar-group {
-                        display: flex; align-items: center; gap: 20px; /* Air gap */
+                        display: flex; align-items: center; gap: 6px;
                     }
 
                     /* ICON BUTTONS (SVG WRAPPERS) */
                     .icon-btn {
-                        width: 32px; height: 32px;
+                        width: 28px; height: 28px;
                         background: transparent; border: none; 
-                        padding: 4px;
+                        padding: 2px;
                         cursor: pointer;
                         display: flex; align-items: center; justify-content: center;
                         border-radius: 50%; /* Rounded touch targets */
@@ -84,7 +84,7 @@ object EpubParser {
 
                     /* SVG STYLES */
                     .feather {
-                        width: 20px; height: 20px;
+                        width: 16px; height: 16px;
                         fill: none;
                         stroke: var(--icon-stroke);
                         stroke-width: 2px;
