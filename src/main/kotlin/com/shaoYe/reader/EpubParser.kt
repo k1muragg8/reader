@@ -368,6 +368,8 @@ object EpubParser {
                          else if (k === 'arrowleft' || k === 'a') navPrev();
                     });
                     
+                    wrapper.addEventListener('wheel', (e) => { e.deltaY > 0 ? navNext() : navPrev(); }, { passive: true });
+                    
                     // EXPOSE
                     window.readerNext = navNext;
                     window.readerPrev = navPrev;
