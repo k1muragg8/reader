@@ -165,9 +165,37 @@ object EpubParser {
                     }
                     #sidebar.open { transform: translateX(0); }
                     .sidebar-header {
-                         padding: 0 20px 15px; font-weight: 600; font-size: 16px; letter-spacing: 0.02em;
-                         border-bottom: 0.5px solid var(--border); display: flex; justify-content: space-between; align-items: center;
+                         position: relative;
+                         height: 50px;
+                         padding: 0 40px 0 20px; /* Right padding reserves space for X */
+                         border-bottom: 0.5px solid var(--border); 
+                         display: flex; align-items: center;
                     }
+                    .sidebar-title {
+                        font-weight: 600; font-size: 16px; letter-spacing: 0.02em;
+                        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                        flex: 1;
+                    }
+                    #btn-close-sidebar {
+                        position: absolute; top: 0; bottom: 0; right: 15px;
+                        width: 40px; height: 50px; /* Full height touch target */
+                        display: flex; align-items: center; justify-content: center;
+                        background: transparent; border: none; cursor: pointer;
+                        z-index: 2010;
+                    }
+                    #btn-close-sidebar svg {
+                        width: 18px; height: 18px;
+                        stroke: var(--text); stroke-width: 2px;
+                        fill: none; stroke-linecap: round; stroke-linejoin: round;
+                        opacity: 0.7; transition: opacity 0.2s;
+                    }
+                    #btn-close-sidebar:hover svg { opacity: 1; }
+                    
+                    /* Narrow Screen Adaption */
+                    @media (max-width: 150px) {
+                        .sidebar-title { display: none; }
+                    }
+
                     .toc-list { flex: 1; overflow-y: auto; padding: 10px 0; }
                     .toc-item { 
                         padding: 10px 20px; font-size: 13px; cursor: pointer; color: var(--text); opacity: 0.85; 
@@ -206,7 +234,12 @@ object EpubParser {
                 
                 <!-- TOC Sidebar -->
                 <div id="sidebar">
-                    <div class="sidebar-header">Chapters <span id="btn-close-sidebar" style="font-size: 24px; cursor: pointer;">×</span></div>
+                    <div class="sidebar-header">
+                        <span class="sidebar-title">Chapters</span>
+                        <button id="btn-close-sidebar">
+                            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
                     <div class="toc-list">$tocListHtml</div>
                 </div>
                 <div id="sidebar-backdrop"></div>
