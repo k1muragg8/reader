@@ -5,7 +5,21 @@
     <idea-version since-build="231" />
 
     <description><![CDATA[
-    A high-performance EPUB reader integrated into your IDE. Features seamless image rendering, background loading to prevent UI lag, and persistence of reading progress. Perfect for reading documentation or technical books while coding.
+  <h3>English Description</h3>
+  <p>A high-performance EPUB reader integrated into your IDE. Perfect for reading technical documentation while coding.</p>
+  <ul>
+    <li><b>Controls</b>: Use Arrow keys or A/D keys for page navigation.</li>
+    <li><b>UI</b>: Zero-margin layout for maximum readability.</li>
+    <li><b>Author</b>: haj1megg8</li>
+  </ul>
+  <hr/>
+  <h3>简体中文说明</h3>
+  <p>集成于 IDE 内部的高性能 EPUB 阅读器。让您在编写代码的同时无缝阅读技术书籍。</p>
+  <ul>
+    <li><b>操作说明</b>：使用键盘左右方向键或 A/D 键进行翻页。</li>
+    <li><b>界面优化</b>：彻底去除侧边阴影，文字全屏显示。</li>
+    <li><b>署名</b>：haj1megg8</li>
+  </ul>
     ]]></description>
 
     <change-notes><![CDATA[

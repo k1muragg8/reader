@@ -37,10 +37,16 @@ object EpubParser {
                         --footer-text: #888;
                     }
                     
-                    html, body {
-                        margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
-                        background: var(--bg); color: var(--text);
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+                    body { 
+                        font-family: sans-serif; 
+                        line-height: 1.6; 
+                        margin: 0 !important; 
+                        padding: 10px 12px !important; 
+                        width: 100% !important; 
+                        max-width: none !important; 
+                        box-sizing: border-box !important;
+                        background-color: var(--bg); 
+                        color: var(--text); 
                     }
                     * { box-sizing: border-box; }
                     
@@ -128,9 +134,9 @@ object EpubParser {
 
                     /* EPUB CONTENT */
                     .chapter { break-before: column; }
-                    .page-content { padding: 10px 15px; margin: 0; width: 100%; box-sizing: border-box; }
+                    .page-content { padding: 12px; margin: 0; width: 100%; box-sizing: border-box; }
                     p { line-height: 1.6; margin-bottom: 0.8em; text-align: justify; font-size: 16px; }
-                    img { max-width: 100%; height: auto; display: block; margin: 15px auto; }
+                    img { max-width: 100%; height: auto; display: block; margin: 10px 0; }
                 </style>
             </head>
             <body>
@@ -287,10 +293,15 @@ object EpubParser {
                     }
                     
                     // HOTKEYS
-                    document.addEventListener('keydown', (e) => {
-                         if(document.activeElement === jumpInput) return;
-                         if(e.key === 'ArrowRight') navNext();
-                         else if(e.key === 'ArrowLeft') navPrev();
+                    document.addEventListener('keydown', function(e) {
+                         const key = e.key.toLowerCase();
+                         if (document.activeElement === jumpInput && key !== 'enter') return;
+                         
+                         if (key === 'arrowright' || key === 'd') {
+                             window.readerNext();
+                         } else if (key === 'arrowleft' || key === 'a') {
+                             window.readerPrev();
+                         }
                     });
                     
                     window.readerNext = navNext;
