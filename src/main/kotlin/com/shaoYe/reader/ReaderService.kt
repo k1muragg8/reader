@@ -2,6 +2,10 @@ package com.shaoYe.reader
 
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
+import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.project.Project
@@ -111,13 +115,26 @@ class ReaderService(private val project: Project) {
 
     fun loadEpub(file: File) {
         if (browser == null) return
-        try {
-            val isDarcula = com.intellij.util.ui.StartupUiUtil.isUnderDarcula
-            val htmlContent = EpubParser.loadEpub(file, isDarcula)
-            browser?.loadHTML(htmlContent, "http://readermaster/") 
-        } catch (e: Exception) {
-            browser?.loadHTML("<html><body><h1 style='color:red;'>Error: ${e.message}</h1></body></html>")
-        }
+        
+        // BACKGROUND TASK (Fix "SlowOperations on EDT" & "Write-unsafe context")
+        ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Loading Book...", false) {
+            override fun run(indicator: ProgressIndicator) {
+                try {
+                    indicator.text = "Parsing EPUB..."
+                    val isDarcula = com.intellij.util.ui.StartupUiUtil.isUnderDarcula
+                    val htmlContent = EpubParser.loadEpub(file, isDarcula)
+                    
+                    // UPDATE UI ON EDT
+                    ApplicationManager.getApplication().invokeLater {
+                        browser?.loadHTML(htmlContent, "http://readermaster/")
+                    }
+                } catch (e: Exception) {
+                    ApplicationManager.getApplication().invokeLater {
+                        browser?.loadHTML("<html><body><h1 style='color:red;'>Error: ${e.message}</h1></body></html>")
+                    }
+                }
+            }
+        })
     }
     
     // Helper wrappers

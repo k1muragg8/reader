@@ -26,6 +26,7 @@ object EpubParser {
             <html lang='en'>
             <head>
                 <meta charset='UTF-8'>
+                <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data:;">
                 <style>
                     /* --- READER MASTER v18 UNIVERSAL --- */
                     :root {
@@ -318,7 +319,7 @@ object EpubParser {
                 println("📚 EPUB Resource found: [${res.href}] -> Filename: [$filename]")
                 
                 try {
-                    val b64 = Base64.getEncoder().encodeToString(res.data)
+                    val b64 = Base64.getEncoder().encodeToString(res.data).replace(Regex("\\s"), "")
                     val dataUri = "data:$mime;base64,$b64"
                     imageMap[filename.lowercase(Locale.getDefault())] = dataUri
                 } catch (e: Exception) {
@@ -385,8 +386,6 @@ object EpubParser {
             name.endsWith(".png") -> "image/png"
             name.endsWith(".gif") -> "image/gif"
             name.endsWith(".svg") -> "image/svg+xml"
-            name.endsWith(".webp") -> "image/webp"
-            name.endsWith(".bmp") -> "image/bmp"
             else -> null
         }
     }
