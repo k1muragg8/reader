@@ -32,6 +32,7 @@ object EpubParser {
                     /* --- READER MASTER v1.0.0 (INSTA-MINIMAL) --- */
                     :root {
                         --bg: ${colors.bg}; --text: ${colors.text};
+                        --sidebar-bg: ${colors.sidebarBg};
                         --border: ${colors.border};
                         --icon-stroke: ${colors.text}; /* Adaptive stroke color */
                         --hover-bg: ${if (colors.bg.startsWith("#2")) "rgba(255,255,255,0.08)" else "rgba(0,0,0,0.04)"};
@@ -62,12 +63,12 @@ object EpubParser {
                     }
                     
                     .toolbar-group {
-                        display: flex; align-items: center; gap: 6px;
+                        display: flex; align-items: center; gap: 2px; /* Extreme tightness */
                     }
 
                     /* ICON BUTTONS (SVG WRAPPERS) */
                     .icon-btn {
-                        width: 28px; height: 28px;
+                        width: 22px; height: 22px;
                         background: transparent; border: none; 
                         padding: 2px;
                         cursor: pointer;
@@ -84,7 +85,7 @@ object EpubParser {
 
                     /* SVG STYLES */
                     .feather {
-                        width: 16px; height: 16px;
+                        width: 14px; height: 14px;
                         fill: none;
                         stroke: var(--icon-stroke);
                         stroke-width: 2px;
@@ -92,22 +93,14 @@ object EpubParser {
                         stroke-linejoin: round;
                     }
 
-                    /* MINIMAL INPUT */
-                    #jump-container {
-                        position: relative;
-                        display: flex; align-items: center; justify-content: center;
+                    /* READER INFO (Text Only) */
+                    #page-info {
+                        font-size: 11px; color: var(--text); opacity: 0.5;
+                        margin: 0 6px; font-weight: 500;
+                        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                        cursor: pointer;
                     }
-                    #jump-input {
-                        width: 42px; height: 26px; 
-                        background: transparent; color: var(--text); 
-                        border: 1px solid var(--icon-stroke); border-radius: 6px;
-                        text-align: center; font-size: 13px; font-weight: 500;
-                        opacity: 0.6;
-                        transition: opacity 0.2s, width 0.2s;
-                    }
-                    #jump-input:focus { opacity: 1; outline: none; width: 50px; }
-                    /* Hide arrows */
-                    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+                    #page-info:hover { opacity: 0.8; }
                     
                     /* CONTENT CONTAINER */
                     #content {
@@ -129,6 +122,25 @@ object EpubParser {
                         column-width: 100vw; column-gap: 0; column-fill: auto;
                     }
                     
+                    /* JUMP INPUT (Ins Wireframe Style) */
+                    #jump-input {
+                        width: 38px; height: 18px;
+                        background: transparent; 
+                        color: var(--text);
+                        border: 1px solid rgba(128,128,128, 0.4);
+                        border-radius: 4px;
+                        text-align: center; 
+                        font-size: 11px; font-weight: 500; font-family: inherit;
+                        padding: 0; margin: 0;
+                        opacity: 0.7; transition: opacity 0.2s, border-color 0.2s;
+                    }
+                    #jump-input:focus { 
+                        opacity: 1; outline: none; 
+                        border-color: var(--text);
+                    }
+                    /* Remove arrows */
+                    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+                    
                     /* EPUB STYLES */
                     .chapter { break-before: column; }
                     .page-content { padding: 20px 48px; margin: 0; width: 100%; box-sizing: border-box; max-width: 800px; margin: 0 auto; }
@@ -139,22 +151,25 @@ object EpubParser {
 
                     /* SIDEBAR (TOC) */
                     #sidebar {
-                        position: absolute; top: 0; left: 0; bottom: 0; width: 280px;
-                        background: var(--bg); border-right: 1px solid var(--border);
-                        transform: translateX(-100%); transition: transform 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
-                        z-index: 2000; display: flex; flex-direction: column;
-                        box-shadow: none !important;
-                        padding-top: 20px;
+                        position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
+                        background: var(--sidebar-bg); 
+                        backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+                        border-right: 0.5px solid var(--border);
+                        transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+                        z-index: 9999; display: flex; flex-direction: column;
+                        box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+                        padding-top: 50px; /* Match toolbar height */
                     }
                     #sidebar.open { transform: translateX(0); }
                     .sidebar-header {
-                         padding: 0 20px 15px; font-weight: 700; font-size: 18px; letter-spacing: -0.5px;
-                         border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
+                         padding: 0 20px 15px; font-weight: 600; font-size: 16px; letter-spacing: 0.02em;
+                         border-bottom: 0.5px solid var(--border); display: flex; justify-content: space-between; align-items: center;
                     }
                     .toc-list { flex: 1; overflow-y: auto; padding: 10px 0; }
                     .toc-item { 
-                        padding: 12px 20px; font-size: 14px; cursor: pointer; color: var(--text); opacity: 0.8; 
+                        padding: 10px 20px; font-size: 13px; cursor: pointer; color: var(--text); opacity: 0.85; 
                         border-left: 2px solid transparent; transition: all 0.2s;
+                        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
                     }
                     .toc-item:hover { background: var(--hover-bg); opacity: 1; border-left-color: var(--icon-stroke); }
                     #sidebar-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.3); z-index: 1500; backdrop-filter: blur(2px); display: none; }
@@ -175,28 +190,15 @@ object EpubParser {
 
                     <!-- Center: Navigation -->
                     <div class="toolbar-group">
-                        <button class="icon-btn" title="Previous" onclick="navPrev()">
-                            <svg class="feather" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                        </button>
-                        
-                        <div id="jump-container">
-                             <input type="number" id="jump-input" placeholder="#" onkeydown="checkJump(event)">
-                        </div>
+                        <!-- Jump Input -->
+                        <input type="number" id="jump-input" placeholder="#" onkeydown="checkJump(event)">
 
-                        <button class="icon-btn" title="Next" onclick="navNext()">
-                            <svg class="feather" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                        </button>
+                        <!-- Info Display -->
+                        <span id="page-info">-- / --</span>
                     </div>
 
-                    <!-- Right: Zoom -->
-                    <div class="toolbar-group">
-                        <button class="icon-btn" title="Zoom Out" onclick="zoomOut()">
-                            <svg class="feather" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        </button>
-                        <button class="icon-btn" title="Zoom In" onclick="zoomIn()">
-                             <svg class="feather" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        </button>
-                    </div>
+                    <!-- Right placeholder to balance layout if needed, or just empty -->
+                    <div class="toolbar-group"></div>
                 </div>
                 
                 <!-- TOC Sidebar -->
@@ -212,16 +214,11 @@ object EpubParser {
                     </div>
                 </div>
                 
-                <!-- FOOTER (Minimal) -->
-                <div style="position:fixed; bottom:12px; left:0; right:0; text-align:center; font-size:10px; opacity:0.3; pointer-events:none;">
-                    <span id="footer-prog"></span>
-                </div>
-
                 <script>
                     const wrapper = document.getElementById('reader-wrapper');
                     const textContainer = document.getElementById('reader-text');
+                    const pageInfo = document.getElementById('page-info');
                     const jumpInput = document.getElementById('jump-input');
-                    const footerProg = document.getElementById('footer-prog');
                     
                     let currentFontSize = 16;
                     let saveTimeout = null;
@@ -270,18 +267,6 @@ object EpubParser {
                     }
                     function checkJump(e) { if (e.key === 'Enter') manualJump(); }
 
-                    // --- ZOOM ---
-                    function zoomIn() { currentFontSize++; applyFont(); }
-                    function zoomOut() { if(currentFontSize>10)currentFontSize--; applyFont(); }
-                    function applyFont() { document.body.style.fontSize = currentFontSize+'px'; }
-
-                    // --- TOC ---
-                    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
-                    function scrollToId(id) {
-                         const el = document.getElementById(id);
-                         if(el) { el.scrollIntoView(); toggleSidebar(); }
-                    }
-
                     // --- PERSISTENCE & PROGRESS ---
                     wrapper.addEventListener('scroll', () => {
                         updateProgress();
@@ -300,7 +285,8 @@ object EpubParser {
                         if(w > 0) {
                              const current = Math.round(wrapper.scrollLeft / w) + 1;
                              const total = Math.ceil(wrapper.scrollWidth / w) || 1;
-                             footerProg.textContent = current + ' / ' + total;
+                             const pct = Math.round((current / total) * 100);
+                             if(pageInfo) pageInfo.textContent = current + ' / ' + total + ' (' + pct + '%)';
                         }
                     }
                     
@@ -320,8 +306,6 @@ object EpubParser {
                     // EXPOSE
                     window.readerNext = navNext;
                     window.readerPrev = navPrev;
-                    window.readerZoomIn = zoomIn;
-                    window.readerZoomOut = zoomOut;
                 </script>
             </body>
             </html>
@@ -361,8 +345,8 @@ object EpubParser {
         }
 
         // --- THEME ---
-        val colors = if (isDarcula) ThemeColors("#2b2d30", "#a9b7c6", "#3c3f41", "#4e5254", "#4c5052") 
-                     else ThemeColors("#ffffff", "#333333", "#f2f2f2", "#d0d0d0", "#e6e6e6")
+        val colors = if (isDarcula) ThemeColors("#2b2d30", "#a9b7c6", "rgba(43, 45, 48, 0.9)", "#3c3f41", "#4c5052") 
+                     else ThemeColors("#ffffff", "#333333", "rgba(255, 255, 255, 0.9)", "#e0e0e0", "#e6e6e6")
 
         // --- BUILD CONTENT ---
         val sb = StringBuilder()
@@ -418,8 +402,8 @@ object EpubParser {
     }
 
     fun getWelcomeHtml(isDarcula: Boolean): String {
-         val colors = if (isDarcula) ThemeColors("#2b2d30", "#aaa", "#3c3f41", "#4e5254", "#4c5052") 
-                     else ThemeColors("#fff", "#333", "#f2f2f2", "#ddd", "#eee")
+         val colors = if (isDarcula) ThemeColors("#2b2d30", "#aaa", "rgba(43, 45, 48, 0.9)", "#4e5254", "#4c5052") 
+                     else ThemeColors("#fff", "#333", "rgba(255, 255, 255, 0.9)", "#ddd", "#eee")
          return getAppHtml(emptyList(), "<div style='display:flex;height:100%;justify-content:center;align-items:center;opacity:0.5;'><h2>Click 📂 to Open</h2></div>", colors)
     }
     
