@@ -2,6 +2,7 @@
     <id>com.shaoYe.reader</id>
     <name>Reader Master</name>
     <vendor>ShaoYe</vendor>
+    <idea-version since-build="231" />
 
     <depends>com.intellij.modules.platform</depends>
 
