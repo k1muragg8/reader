@@ -1,9 +1,21 @@
 <idea-plugin>
     <id>com.shaoYe.reader</id>
     <name>Reader Master</name>
-    <vendor>ShaoYe</vendor>
+    <vendor>haj1megg8</vendor>
     <idea-version since-build="231" />
 
+    <description><![CDATA[
+    A high-performance EPUB reader integrated into your IDE. Features seamless image rendering, background loading to prevent UI lag, and persistence of reading progress. Perfect for reading documentation or technical books while coding.
+    ]]></description>
+
+    <change-notes><![CDATA[
+    <ul>
+        <li>Fixed image rendering issues on Linux/JCEF using Base64 injection.</li>
+        <li>Optimized performance with background thread parsing.</li>
+        <li>Improved UI by removing excessive margins.</li>
+        <li>Added progress persistence.</li>
+    </ul>
+    ]]></change-notes>
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">

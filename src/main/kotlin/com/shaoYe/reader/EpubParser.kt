@@ -128,7 +128,7 @@ object EpubParser {
 
                     /* EPUB CONTENT */
                     .chapter { break-before: column; }
-                    .page-content { padding: 40px 8%; max-width: 800px; margin: 0 auto; box-sizing: border-box; }
+                    .page-content { padding: 10px 15px; margin: 0; width: 100%; box-sizing: border-box; }
                     p { line-height: 1.6; margin-bottom: 0.8em; text-align: justify; font-size: 16px; }
                     img { max-width: 100%; height: auto; display: block; margin: 15px auto; }
                 </style>
