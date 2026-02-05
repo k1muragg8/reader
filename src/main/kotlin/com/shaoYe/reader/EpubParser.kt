@@ -55,37 +55,40 @@ object EpubParser {
                     #toolbar {
                         position: fixed; top: 0; left: 0; right: 0; height: 50px; 
                         background: var(--bg); 
-                        /* No border, just clean space */
-                        /* border-bottom: 1px solid var(--border); */ 
-                        display: flex; align-items: center; justify-content: space-between;
-                        padding: 0 4px; z-index: 1000;
+                        display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+                        padding: 0 12px; z-index: 1000;
                         user-select: none;
                     }
                     
                     .toolbar-group {
-                        display: flex; align-items: center; gap: 2px; /* Extreme tightness */
+                        display: flex; align-items: center; gap: 8px; /* Comfortable touch gap */
                     }
+                    
+                    /* Align groups for Grid */
+                    .toolbar-group:nth-child(1) { justify-self: start; }
+                    .toolbar-group:nth-child(2) { justify-self: center; }
+                    .toolbar-group:nth-child(3) { justify-self: end; }
 
                     /* ICON BUTTONS (SVG WRAPPERS) */
                     .icon-btn {
-                        width: 22px; height: 22px;
+                        width: 28px; height: 28px;
                         background: transparent; border: none; 
-                        padding: 2px;
+                        padding: 4px;
                         cursor: pointer;
                         display: flex; align-items: center; justify-content: center;
-                        border-radius: 50%; /* Rounded touch targets */
-                        transition: transform 0.1s ease, background 0.2s;
+                        border-radius: 50%;
+                        transition: background 0.2s;
                         opacity: 0.8;
                     }
                     .icon-btn:hover { 
                         opacity: 1;
                         background: var(--hover-bg);
                     }
-                    .icon-btn:active { transform: scale(0.92); }
+                    .icon-btn:active { transform: scale(0.95); }
 
                     /* SVG STYLES */
                     .feather {
-                        width: 14px; height: 14px;
+                        width: 16px; height: 16px;
                         fill: none;
                         stroke: var(--icon-stroke);
                         stroke-width: 2px;
@@ -95,12 +98,12 @@ object EpubParser {
 
                     /* READER INFO (Text Only) */
                     #page-info {
-                        font-size: 11px; color: var(--text); opacity: 0.5;
-                        margin: 0 6px; font-weight: 500;
+                        font-size: 11px; color: var(--text); opacity: 0.6;
+                        margin: 0 8px; font-weight: 500;
                         font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-                        cursor: pointer;
+                        cursor: default;
+                        white-space: nowrap;
                     }
-                    #page-info:hover { opacity: 0.8; }
                     
                     /* CONTENT CONTAINER */
                     #content {
@@ -122,13 +125,13 @@ object EpubParser {
                         column-width: 100vw; column-gap: 0; column-fill: auto;
                     }
                     
-                    /* JUMP INPUT (Ins Wireframe Style) */
+                    /* JUMP INPUT (Ins Style) */
                     #jump-input {
-                        width: 38px; height: 18px;
+                        width: 40px; height: 22px;
                         background: transparent; 
                         color: var(--text);
                         border: 1px solid rgba(128,128,128, 0.4);
-                        border-radius: 4px;
+                        border-radius: 6px;
                         text-align: center; 
                         font-size: 11px; font-weight: 500; font-family: inherit;
                         padding: 0; margin: 0;
@@ -153,12 +156,12 @@ object EpubParser {
                     #sidebar {
                         position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
                         background: var(--sidebar-bg); 
-                        backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+                        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                         border-right: 0.5px solid var(--border);
                         transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
                         z-index: 9999; display: flex; flex-direction: column;
                         box-shadow: 4px 0 24px rgba(0,0,0,0.1);
-                        padding-top: 50px; /* Match toolbar height */
+                        padding-top: 50px;
                     }
                     #sidebar.open { transform: translateX(0); }
                     .sidebar-header {
@@ -172,7 +175,7 @@ object EpubParser {
                         font-family: -apple-system, BlinkMacSystemFont, sans-serif;
                     }
                     .toc-item:hover { background: var(--hover-bg); opacity: 1; border-left-color: var(--icon-stroke); }
-                    #sidebar-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.3); z-index: 1500; backdrop-filter: blur(2px); display: none; }
+                    #sidebar-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.3); z-index: 9000; backdrop-filter: blur(2px); display: none; }
                     #sidebar.open + #sidebar-backdrop { display: block; }
                 </style>
             </head>
@@ -180,10 +183,10 @@ object EpubParser {
                 <div id="toolbar">
                     <!-- Left: Menu & Open -->
                     <div class="toolbar-group">
-                        <button class="icon-btn" title="Chapters" onclick="toggleSidebar()">
+                        <button id="btn-chapters" class="icon-btn" title="Chapters">
                             <svg class="feather" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                         </button>
-                        <button class="icon-btn" title="Open File" onclick="window.readerBridge.openFile()">
+                        <button id="btn-open" class="icon-btn" title="Open File">
                             <svg class="feather" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                         </button>
                     </div>
@@ -191,22 +194,22 @@ object EpubParser {
                     <!-- Center: Navigation -->
                     <div class="toolbar-group">
                         <!-- Jump Input -->
-                        <input type="number" id="jump-input" placeholder="#" onkeydown="checkJump(event)">
+                        <input type="number" id="jump-input" placeholder="#">
 
                         <!-- Info Display -->
                         <span id="page-info">-- / --</span>
                     </div>
 
-                    <!-- Right placeholder to balance layout if needed, or just empty -->
+                    <!-- Right placeholder -->
                     <div class="toolbar-group"></div>
                 </div>
                 
                 <!-- TOC Sidebar -->
                 <div id="sidebar">
-                    <div class="sidebar-header">Chapters <span style="font-size: 24px; cursor: pointer;" onclick="toggleSidebar()">×</span></div>
+                    <div class="sidebar-header">Chapters <span id="btn-close-sidebar" style="font-size: 24px; cursor: pointer;">×</span></div>
                     <div class="toc-list">$tocListHtml</div>
                 </div>
-                <div id="sidebar-backdrop" onclick="toggleSidebar()"></div>
+                <div id="sidebar-backdrop"></div>
 
                 <div id="content">
                     <div id="reader-wrapper" tabindex="0">
@@ -219,9 +222,29 @@ object EpubParser {
                     const textContainer = document.getElementById('reader-text');
                     const pageInfo = document.getElementById('page-info');
                     const jumpInput = document.getElementById('jump-input');
+                    const sidebar = document.getElementById('sidebar');
+                    const backdrop = document.getElementById('sidebar-backdrop');
                     
-                    let currentFontSize = 16;
                     let saveTimeout = null;
+
+                    // --- INIT ---
+                    window.onload = () => { 
+                         updateLayout(); 
+                         wrapper.focus();
+                         
+                         // BIND EVENTS (Event Listeners)
+                         document.getElementById('btn-chapters').addEventListener('click', toggleSidebar);
+                         document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
+                         backdrop.addEventListener('click', toggleSidebar);
+                         
+                         document.getElementById('btn-open').addEventListener('click', () => {
+                             if(window.readerBridge) window.readerBridge.openFile();
+                         });
+                         
+                         jumpInput.addEventListener('keydown', (e) => {
+                             if(e.key === 'Enter') manualJump();
+                         });
+                    };
 
                     // --- LAYOUT ---
                     function updateLayout(width) {
@@ -242,7 +265,6 @@ object EpubParser {
                          }
                     });
                     observer.observe(wrapper);
-                    window.onload = () => { updateLayout(); wrapper.focus(); };
 
                     // --- NAVIGATION ---
                     function navNext() { 
@@ -265,7 +287,18 @@ object EpubParser {
                              jumpInput.value = ''; jumpInput.blur();
                          }
                     }
-                    function checkJump(e) { if (e.key === 'Enter') manualJump(); }
+
+                    // --- TOC ---
+                    function toggleSidebar() { 
+                        sidebar.classList.toggle('open'); 
+                    }
+                    function scrollToId(id) {
+                         const el = document.getElementById(id);
+                         if(el) { 
+                             el.scrollIntoView(); 
+                             if(sidebar.classList.contains('open')) toggleSidebar(); 
+                         }
+                    }
 
                     // --- PERSISTENCE & PROGRESS ---
                     wrapper.addEventListener('scroll', () => {
