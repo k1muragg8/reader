@@ -160,7 +160,6 @@ object EpubParser {
                         border-right: 0.5px solid var(--border);
                         transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
                         z-index: 9999; display: flex; flex-direction: column;
-                        box-shadow: 4px 0 24px rgba(0,0,0,0.1);
                         padding-top: 50px;
                     }
                     #sidebar.open { transform: translateX(0); }
