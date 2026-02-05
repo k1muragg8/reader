@@ -41,7 +41,7 @@ object EpubParser {
                         font-family: sans-serif; 
                         line-height: 1.6; 
                         margin: 0 !important; 
-                        padding: 10px 12px !important; 
+                        padding: 10px 15px !important; 
                         width: 100% !important; 
                         max-width: none !important; 
                         box-sizing: border-box !important;

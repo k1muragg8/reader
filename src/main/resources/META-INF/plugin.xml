@@ -5,20 +5,32 @@
     <idea-version since-build="231" />
 
     <description><![CDATA[
-  <h3>English Description</h3>
-  <p>A high-performance EPUB reader integrated into your IDE. Perfect for reading technical documentation while coding.</p>
+  <h3>English</h3>
+  <p>Reader Master: A high-performance EPUB reader integrated into your IDE. Read technical books while coding.</p>
   <ul>
-    <li><b>Controls</b>: Use Arrow keys or A/D keys for page navigation.</li>
-    <li><b>UI</b>: Zero-margin layout for maximum readability.</li>
-    <li><b>Author</b>: haj1megg8</li>
+    <li><b>Controls</b>: Use Arrows or A/D keys to flip pages.</li>
+    <li><b>No Shadow</b>: Full-width layout optimized for IDE tool windows.</li>
+    <li><b>Contact</b>: k1muragg8@gmail.com</li>
   </ul>
+
   <hr/>
-  <h3>简体中文说明</h3>
-  <p>集成于 IDE 内部的高性能 EPUB 阅读器。让您在编写代码的同时无缝阅读技术书籍。</p>
+
+  <h3>简体中文</h3>
+  <p>Reader Master (阅读大师)：集成于 IDE 内部的高性能 EPUB 阅读器。让您在编写代码的同时无缝阅读技术书籍。</p>
   <ul>
-    <li><b>操作说明</b>：使用键盘左右方向键或 A/D 键进行翻页。</li>
-    <li><b>界面优化</b>：彻底去除侧边阴影，文字全屏显示。</li>
-    <li><b>署名</b>：haj1megg8</li>
+    <li><b>快捷翻页</b>：支持左右方向键或 A/D 键。</li>
+    <li><b>极致排版</b>：彻底去除左侧阴影与大边距，文字占满屏幕。</li>
+    <li><b>联系作者</b>：k1muragg8@gmail.com</li>
+  </ul>
+
+  <hr/>
+
+  <h3>日本語</h3>
+  <p>Reader Master：IDEに統合された高性能EPUBリーダー。コードを書きながら技術書やドキュメントをスムーズに閲覧できます。</p>
+  <ul>
+    <li><b>操作方法</b>：矢印キーまたは A/D キーでページをめくることができます。</li>
+    <li><b>全画面表示</b>：サイドバーに最適化され、余計な余白や影を排除しました。</li>
+    <li><b>連絡先</b>：k1muragg8@gmail.com</li>
   </ul>
     ]]></description>
 
