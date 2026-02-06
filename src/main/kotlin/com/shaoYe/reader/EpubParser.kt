@@ -5,7 +5,6 @@ import nl.siegmann.epublib.domain.TOCReference
 import nl.siegmann.epublib.epub.EpubReader
 import org.jsoup.Jsoup
 import java.io.File
-import java.net.URLDecoder
 import java.nio.charset.Charset
 import java.util.Base64
 import java.util.Locale
@@ -21,7 +20,6 @@ object EpubParser {
             }
         }
 
-        // MANDATORY: CSP INJECTION FOR DATA URI SUPPORT
         return """
             <!DOCTYPE html>
             <html lang='en'>
@@ -29,178 +27,93 @@ object EpubParser {
                 <meta charset='UTF-8'>
                 <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data:;">
                 <style>
-                    /* --- READER MASTER v1.0.0 (INSTA-MINIMAL) --- */
                     :root {
                         --bg: ${colors.bg}; --text: ${colors.text};
                         --sidebar-bg: ${colors.sidebarBg};
                         --border: ${colors.border};
-                        --icon-stroke: ${colors.text}; /* Adaptive stroke color */
+                        --icon-stroke: ${colors.text};
                         --hover-bg: ${if (colors.bg.startsWith("#2")) "rgba(255,255,255,0.08)" else "rgba(0,0,0,0.04)"};
                     }
                     
                     body { 
                         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                        margin: 0 !important; 
-                        padding: 0 !important; 
-                        width: 100% !important; 
-                        max-width: none !important; 
-                        box-sizing: border-box !important;
-                        background-color: var(--bg); 
-                        color: var(--text); 
-                        overflow: hidden; 
+                        margin: 0 !important; padding: 0 !important; width: 100% !important; 
+                        max-width: none !important; box-sizing: border-box !important;
+                        background-color: var(--bg); color: var(--text); overflow: hidden; 
                     }
                     * { box-sizing: border-box; }
                     
-                    /* TOOLBAR (Pure Minimalist) */
+                    /* --- 核心优化：抗闪烁 CSS --- */
+                    /* 当处于 resizing 状态时，强制关闭所有动画和吸附，像石头一样稳 */
+                    .resizing, .resizing * {
+                        transition: none !important;
+                        scroll-behavior: auto !important;
+                        scroll-snap-type: none !important;
+                    }
+
                     #toolbar {
                         position: fixed; top: 0; left: 0; right: 0; height: 50px; 
-                        background: var(--bg); 
-                        display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
-                        padding: 0 12px; z-index: 1000;
-                        user-select: none;
+                        background: var(--bg); display: grid; grid-template-columns: 1fr auto 1fr; 
+                        align-items: center; padding: 0 12px; z-index: 1000; user-select: none;
                     }
-                    
-                    .toolbar-group {
-                        display: flex; align-items: center; gap: 8px; /* Comfortable touch gap */
-                    }
-                    
-                    /* Align groups for Grid */
+                    .toolbar-group { display: flex; align-items: center; gap: 8px; }
                     .toolbar-group:nth-child(1) { justify-self: start; }
                     .toolbar-group:nth-child(2) { justify-self: center; }
                     .toolbar-group:nth-child(3) { justify-self: end; }
 
-                    /* ICON BUTTONS (SVG WRAPPERS) */
                     .icon-btn {
-                        width: 28px; height: 28px;
-                        background: transparent; border: none; 
-                        padding: 4px;
-                        cursor: pointer;
-                        display: flex; align-items: center; justify-content: center;
-                        border-radius: 50%;
-                        transition: background 0.2s;
-                        opacity: 0.8;
+                        width: 28px; height: 28px; background: transparent; border: none; 
+                        padding: 4px; cursor: pointer; display: flex; align-items: center; 
+                        justify-content: center; border-radius: 50%; transition: background 0.2s; opacity: 0.8;
                     }
-                    .icon-btn:hover { 
-                        opacity: 1;
-                        background: var(--hover-bg);
-                    }
+                    .icon-btn:hover { opacity: 1; background: var(--hover-bg); }
                     .icon-btn:active { transform: scale(0.95); }
 
-                    /* SVG STYLES */
-                    .feather {
-                        width: 16px; height: 16px;
-                        fill: none;
-                        stroke: var(--icon-stroke);
-                        stroke-width: 2px;
-                        stroke-linecap: round;
-                        stroke-linejoin: round;
-                    }
+                    .feather { width: 16px; height: 16px; fill: none; stroke: var(--icon-stroke); stroke-width: 2px; }
 
-                    /* READER INFO (Text Only) */
                     #page-info {
-                        font-size: 11px; color: var(--text); opacity: 0.6;
-                        margin: 0 8px; font-weight: 500;
-                        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-                        cursor: default;
-                        white-space: nowrap;
+                        font-size: 11px; color: var(--text); opacity: 0.6; margin: 0 8px; 
+                        font-weight: 500; font-family: -apple-system, sans-serif; cursor: default; white-space: nowrap;
                     }
                     
-                    /* CONTENT CONTAINER */
-                    #content {
-                        position: absolute; top: 50px; bottom: 0; left: 0; right: 0;
-                        overflow: hidden;
-                    }
+                    #content { position: absolute; top: 50px; bottom: 0; left: 0; right: 0; overflow: hidden; }
 
-                    /* READER WRAPPER */
                     #reader-wrapper {
-                        width: 100%; height: 100%;
-                        overflow-x: scroll; overflow-y: hidden;
-                        scroll-snap-type: x mandatory;
-                        scroll-behavior: smooth;
-                        outline: none;
+                        width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden;
+                        scroll-snap-type: x mandatory; scroll-behavior: smooth; outline: none;
                     }
                     
-                    #reader-text {
-                        height: 100%; width: 100%;
-//                        column-width: 100vw; column-gap: 0; column-fill: auto;
-                    }
+                    #reader-text { height: 100%; width: 100%; column-fill: auto; }
                     
-                    /* JUMP INPUT (Ins Style) */
                     #jump-input {
-                        width: 40px; height: 22px;
-                        background: transparent; 
-                        color: var(--text);
-                        border: 1px solid rgba(128,128,128, 0.4);
-                        border-radius: 6px;
-                        text-align: center; 
-                        font-size: 11px; font-weight: 500; font-family: inherit;
-                        padding: 0; margin: 0;
-                        opacity: 0.7; transition: opacity 0.2s, border-color 0.2s;
+                        width: 40px; height: 22px; background: transparent; color: var(--text);
+                        border: 1px solid rgba(128,128,128, 0.4); border-radius: 6px;
+                        text-align: center; font-size: 11px; font-weight: 500; opacity: 0.7;
                     }
-                    #jump-input:focus { 
-                        opacity: 1; outline: none; 
-                        border-color: var(--text);
-                    }
-                    /* Remove arrows */
-                    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+                    #jump-input:focus { opacity: 1; outline: none; border-color: var(--text); }
                     
-                    /* EPUB STYLES */
                     .chapter { break-before: column; }
-                    .page-content { padding: 20px 16px; margin: 0; width: 100%; box-sizing: border-box; margin: 0 auto; }
+                    .page-content { padding: 20px 16px; margin: 0; width: 100%; box-sizing: border-box; }
                     p { line-height: 1.8; margin-bottom: 1.2em; text-align: justify; font-size: 16px; letter-spacing: 0.01em; }
                     img { max-width: 100%; height: auto; display: block; margin: 20px auto; border-radius: 8px; }
                     
                     ::-webkit-scrollbar { display: none !important; }
 
-                    /* SIDEBAR (TOC) */
                     #sidebar {
                         position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
-                        background: var(--sidebar-bg); 
-                        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-                        border-right: 0.5px solid var(--border);
-                        transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-                        z-index: 9999; display: flex; flex-direction: column;
-                        padding-top: 50px;
+                        background: var(--sidebar-bg); backdrop-filter: blur(20px);
+                        border-right: 0.5px solid var(--border); transform: translateX(-100%); 
+                        transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+                        z-index: 9999; display: flex; flex-direction: column; padding-top: 50px;
                     }
                     #sidebar.open { transform: translateX(0); }
-                    .sidebar-header {
-                         position: relative;
-                         height: 50px;
-                         padding: 0 40px 0 20px; /* Right padding reserves space for X */
-                         border-bottom: 0.5px solid var(--border); 
-                         display: flex; align-items: center;
-                    }
-                    .sidebar-title {
-                        font-weight: 600; font-size: 16px; letter-spacing: 0.02em;
-                        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-                        flex: 1;
-                    }
-                    #btn-close-sidebar {
-                        position: absolute; top: 0; bottom: 0; right: 15px;
-                        width: 40px; height: 50px; /* Full height touch target */
-                        display: flex; align-items: center; justify-content: center;
-                        background: transparent; border: none; cursor: pointer;
-                        z-index: 2010;
-                    }
-                    #btn-close-sidebar svg {
-                        width: 18px; height: 18px;
-                        stroke: var(--text); stroke-width: 2px;
-                        fill: none; stroke-linecap: round; stroke-linejoin: round;
-                        opacity: 0.7; transition: opacity 0.2s;
-                    }
-                    #btn-close-sidebar:hover svg { opacity: 1; }
+                    .sidebar-header { position: relative; height: 50px; padding: 0 40px 0 20px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; }
+                    .sidebar-title { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+                    #btn-close-sidebar { position: absolute; right: 15px; width: 40px; height: 50px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; cursor: pointer; }
+                    #btn-close-sidebar svg { width: 18px; height: 18px; stroke: var(--text); stroke-width: 2px; fill: none; opacity: 0.7; }
                     
-                    /* Narrow Screen Adaption */
-                    @media (max-width: 150px) {
-                        .sidebar-title { display: none; }
-                    }
-
                     .toc-list { flex: 1; overflow-y: auto; padding: 10px 0; }
-                    .toc-item { 
-                        padding: 10px 20px; font-size: 13px; cursor: pointer; color: var(--text); opacity: 0.85; 
-                        border-left: 2px solid transparent; transition: all 0.2s;
-                        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-                    }
+                    .toc-item { padding: 10px 20px; font-size: 13px; cursor: pointer; color: var(--text); opacity: 0.85; border-left: 2px solid transparent; transition: all 0.2s; }
                     .toc-item:hover { background: var(--hover-bg); opacity: 1; border-left-color: var(--icon-stroke); }
                     #sidebar-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.3); z-index: 9000; backdrop-filter: blur(2px); display: none; }
                     #sidebar.open + #sidebar-backdrop { display: block; }
@@ -208,37 +121,19 @@ object EpubParser {
             </head>
             <body>
                 <div id="toolbar">
-                    <!-- Left: Menu & Open -->
                     <div class="toolbar-group">
-                        <button id="btn-chapters" class="icon-btn" title="Chapters">
-                            <svg class="feather" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                        </button>
-                        <button id="btn-open" class="icon-btn" title="Open File">
-                            <svg class="feather" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                        </button>
+                        <button id="btn-chapters" class="icon-btn"><svg class="feather" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+                        <button id="btn-open" class="icon-btn"><svg class="feather" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></button>
                     </div>
-
-                    <!-- Center: Navigation -->
                     <div class="toolbar-group">
-                        <!-- Jump Input -->
                         <input type="number" id="jump-input" placeholder="#">
-
-                        <!-- Info Display -->
                         <span id="page-info">-- / --</span>
                     </div>
-
-                    <!-- Right placeholder -->
                     <div class="toolbar-group"></div>
                 </div>
                 
-                <!-- TOC Sidebar -->
                 <div id="sidebar">
-                    <div class="sidebar-header">
-                        <span class="sidebar-title">Chapters</span>
-                        <button id="btn-close-sidebar">
-                            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        </button>
-                    </div>
+                    <div class="sidebar-header"><span class="sidebar-title">Chapters</span><button id="btn-close-sidebar"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div>
                     <div class="toc-list">$tocListHtml</div>
                 </div>
                 <div id="sidebar-backdrop"></div>
@@ -257,73 +152,139 @@ object EpubParser {
                     const sidebar = document.getElementById('sidebar');
                     const backdrop = document.getElementById('sidebar-backdrop');
                     
+                    // 状态锁
+                    let isResizing = false;
+                    let resizeTimer = null;
                     let saveTimeout = null;
+                    
+                    // 影子追踪器：记录当前视野中“最关键”的那个元素索引
+                    let currentAnchorIndex = 0;
+                    let allElements = [];
 
-                    // --- INIT ---
                     window.onload = () => { 
+                         // 缓存所有可能的锚点（包含列表项等）
+                         allElements = Array.from(textContainer.querySelectorAll('p, h1, h2, h3, img, li, blockquote'));
                          updateLayout(); 
                          wrapper.focus();
-                         
-                         // BIND EVENTS (Event Listeners)
+                         // Bind Events
                          document.getElementById('btn-chapters').addEventListener('click', toggleSidebar);
                          document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
                          backdrop.addEventListener('click', toggleSidebar);
-                         
-                         document.getElementById('btn-open').addEventListener('click', () => {
-                             if(window.readerBridge) window.readerBridge.openFile();
-                         });
-                         
-                         jumpInput.addEventListener('keydown', (e) => {
-                             if(e.key === 'Enter') manualJump();
-                         });
+                         document.getElementById('btn-open').addEventListener('click', () => { if(window.readerBridge) window.readerBridge.openFile(); });
+                         jumpInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') manualJump(); });
                     };
 
-                    // --- LAYOUT ---
                     function updateLayout(width) {
-                        const w = width || window.innerWidth;
+                        const w = width || wrapper.clientWidth;
                         if(w > 0) {
                             textContainer.style.width = 'auto'; 
                             textContainer.style.columnWidth = w + 'px';
+                            textContainer.style.columnGap = '0px';
                         }
-                        updateProgress();
                     }
+
+                    // --- 1. 平时：精准记录“谁是主角” ---
+                    wrapper.addEventListener('scroll', () => {
+                        if (isResizing) return; // 施工期间不记录
+                        updateProgress(); 
+                        if(saveTimeout) clearTimeout(saveTimeout);
+                        saveTimeout = setTimeout(() => {
+                            findCurrentAnchor(); // 记录锚点
+                            saveToBridge();      // 保存进度
+                        }, 200);
+                    });
+
+                    function findCurrentAnchor() {
+                        const currentScroll = wrapper.scrollLeft;
+                        const viewWidth = wrapper.clientWidth;
+                        
+                        // 遍历找锚点
+                        // 策略优化：不再只找“开始位置 > scroll”的
+                        // 而是找“结束位置 > scroll”的第一个元素（即当前视野里的第一个元素，哪怕它跨页了）
+                        for (let i = 0; i < allElements.length; i++) {
+                            const el = allElements[i];
+                            const elStart = el.offsetLeft;
+                            const elEnd = elStart + el.offsetWidth;
+                            
+                            // 如果这个元素的屁股还在当前页面里，那它就是我们要找的头一个
+                            if (elEnd > currentScroll) { 
+                                currentAnchorIndex = i;
+                                break;
+                            }
+                        }
+                    }
+
+                    // --- 2. 战时：无感冻结重排 ---
                     const observer = new ResizeObserver(entries => {
-                         for(let entry of entries) {
-                             if(entry.contentRect.width > 0) {
-                                 const idx = Math.round(wrapper.scrollLeft / (wrapper.clientWidth || 1));
-                                 updateLayout(entry.contentRect.width);
-                                 wrapper.scrollTo({ left: idx * entry.contentRect.width, behavior: 'instant' });
-                             }
-                         }
+                        for(let entry of entries) {
+                            const width = entry.contentRect.width;
+                            if(width <= 0) continue;
+
+                            // A. 刚开始拖动：打麻醉
+                            if (!isResizing) {
+                                isResizing = true;
+                                wrapper.classList.add('resizing'); // 杀掉动画和吸附
+                            }
+                            
+                            // B. 拖动中：实时计算但不乱跳
+                            if(resizeTimer) clearTimeout(resizeTimer);
+                            
+                            // 更新布局列宽
+                            updateLayout(width);
+
+                            // 强行纠偏：找到原来的主角在新舞台的位置
+                            const anchorEl = allElements[currentAnchorIndex];
+                            if (anchorEl) {
+                                const newWidth = wrapper.clientWidth;
+                                // 问浏览器：这个元素现在在哪？
+                                const newOffset = anchorEl.offsetLeft;
+                                // 它是第几页？
+                                const targetLeft = Math.floor(newOffset / (newWidth || 1)) * newWidth;
+                                // 瞬移过去
+                                wrapper.scrollTo(targetLeft, 0);
+                            }
+
+                            // C. 拖动结束：200ms后解除麻醉
+                            resizeTimer = setTimeout(() => {
+                                isResizing = false;
+                                wrapper.classList.remove('resizing'); // 恢复平滑和吸附
+                                updateProgress();
+                            }, 200);
+                        }
                     });
                     observer.observe(wrapper);
 
-                    // --- NAVIGATION ---
-                    function navNext() { 
-                         const w = wrapper.clientWidth;
-                         const idx = Math.round(wrapper.scrollLeft / w);
-                         wrapper.scrollTo({ left: (idx + 1) * w, behavior: 'smooth' });
-                    }
-                    function navPrev() { 
-                         const w = wrapper.clientWidth;
-                         const idx = Math.round(wrapper.scrollLeft / w);
-                         wrapper.scrollTo({ left: (idx - 1) * w, behavior: 'smooth' });
-                    }
-                    
-                    // --- JUMP ---
-                    function manualJump() {
-                         const val = parseInt(jumpInput.value);
-                         if (val > 0) {
-                             const w = wrapper.clientWidth;
-                             wrapper.scrollTo({ left: (val-1) * w, behavior: 'auto' });
-                             jumpInput.value = ''; jumpInput.blur();
-                         }
+                    function saveToBridge() {
+                        const w = wrapper.clientWidth;
+                        if(w > 0 && window.readerBridge) {
+                            const maxScroll = wrapper.scrollWidth - w;
+                            const pct = maxScroll > 0 ? (wrapper.scrollLeft / maxScroll) : 0;
+                            window.readerBridge.saveProgress(pct.toString());
+                        }
                     }
 
-                    // --- TOC ---
-                    function toggleSidebar() { 
-                        sidebar.classList.toggle('open'); 
+                    // --- Navigation ---
+                    function navNext() { 
+                        const w = wrapper.clientWidth;
+                        const idx = Math.round(wrapper.scrollLeft / w);
+                        wrapper.scrollTo({ left: (idx + 1) * w, behavior: 'smooth' });
                     }
+                    function navPrev() { 
+                        const w = wrapper.clientWidth;
+                        const idx = Math.round(wrapper.scrollLeft / w);
+                        wrapper.scrollTo({ left: (idx - 1) * w, behavior: 'smooth' });
+                    }
+                    
+                    function manualJump() {
+                        const val = parseInt(jumpInput.value);
+                        if (val > 0) {
+                            const w = wrapper.clientWidth;
+                            wrapper.scrollTo({ left: (val-1) * w, behavior: 'auto' });
+                            jumpInput.value = ''; jumpInput.blur();
+                        }
+                    }
+
+                    function toggleSidebar() { sidebar.classList.toggle('open'); }
                     function scrollToId(id) {
                          const el = document.getElementById(id);
                          if(el) { 
@@ -331,36 +292,31 @@ object EpubParser {
                              if(sidebar.classList.contains('open')) toggleSidebar(); 
                          }
                     }
-
-                    // --- PERSISTENCE & PROGRESS ---
-                    wrapper.addEventListener('scroll', () => {
-                        updateProgress();
-                        if(saveTimeout) clearTimeout(saveTimeout);
-                        saveTimeout = setTimeout(() => {
-                            const w = wrapper.clientWidth;
-                            if(w > 0 && window.readerBridge) {
-                                const idx = Math.round(wrapper.scrollLeft / w);
-                                window.readerBridge.saveProgress(idx.toString());
-                            }
-                        }, 500);
-                    });
                     
                     function updateProgress() {
+                        if (isResizing) return;
                         const w = wrapper.clientWidth;
+                        const scrollW = wrapper.scrollWidth;
                         if(w > 0) {
                              const current = Math.round(wrapper.scrollLeft / w) + 1;
-                             const total = Math.ceil(wrapper.scrollWidth / w) || 1;
-                             const pct = Math.round((current / total) * 100);
+                             const total = Math.ceil(scrollW / w) || 1;
+                             const maxScroll = scrollW - w;
+                             const pct = maxScroll > 0 ? Math.round((wrapper.scrollLeft / maxScroll) * 100) : 0;
                              if(pageInfo) pageInfo.textContent = current + ' / ' + total + ' (' + pct + '%)';
                         }
                     }
                     
                     window.readerRestore = function(s) {
-                        const i = parseInt(s);
-                        if(i >= 0) setTimeout(() => wrapper.scrollTo({ left: i * wrapper.clientWidth, behavior: 'instant' }), 100);
+                        const pct = parseFloat(s);
+                        if(!isNaN(pct)) {
+                            setTimeout(() => {
+                                const maxScroll = wrapper.scrollWidth - wrapper.clientWidth;
+                                wrapper.scrollTo({ left: pct * maxScroll, behavior: 'instant' });
+                                setTimeout(findCurrentAnchor, 200);
+                            }, 300);
+                        }
                     };
 
-                    // --- HOTKEYS ---
                     document.addEventListener('keydown', function(e) {
                          const k = e.key.toLowerCase();
                          if (document.activeElement === jumpInput && k !== 'enter') return;
@@ -369,112 +325,69 @@ object EpubParser {
                     });
                     
                     wrapper.addEventListener('wheel', (e) => { e.deltaY > 0 ? navNext() : navPrev(); }, { passive: true });
-                    
-                    // EXPOSE
-                    window.readerNext = navNext;
-                    window.readerPrev = navPrev;
+                    window.readerNext = navNext; window.readerPrev = navPrev;
                 </script>
             </body>
             </html>
-
         """.trimIndent()
     }
 
     fun loadEpub(file: File, isDarcula: Boolean): String {
         val epubReader = EpubReader()
         val book = epubReader.readEpub(file.inputStream())
-        
-        // --- STEP 1: INVENTORY (LOG EVERYTHING) ---
-        // Requirement 1: Robust Image Map (Key 1: Full Path, Key 2: Filename)
         val imageMap = mutableMapOf<String, String>()
-        println("📚 STARTING EPUB IMAGE INVENTORY 📚")
-        
+
         for (res in book.resources.all) {
             val href = res.href
             val mime = getMimeType(href)
-            
             if (mime != null && mime.startsWith("image/")) {
                 val filename = href.substringAfterLast('/')
-                println("📚 EPUB Resource found: [${res.href}] -> Filename: [$filename]")
-                
                 try {
-                    // Requirement 2: Strict Base64 Sanitization (No newlines)
                     val b64 = Base64.getEncoder().encodeToString(res.data).replace(Regex("\\s"), "")
                     val dataUri = "data:$mime;base64,$b64"
-                    
-                    // Store BOTH full href and simple filename for maximum matching success
                     imageMap[href.lowercase(Locale.getDefault())] = dataUri
                     imageMap[filename.lowercase(Locale.getDefault())] = dataUri
-                } catch (e: Exception) {
-                    println("❌ Failed to encode ${res.href}: ${e.message}")
-                }
+                } catch (e: Exception) { }
             }
         }
 
-        // --- THEME ---
-        val colors = if (isDarcula) ThemeColors("#2b2d30", "#a9b7c6", "rgba(43, 45, 48, 0.9)", "#3c3f41", "#4c5052") 
-                     else ThemeColors("#ffffff", "#333333", "rgba(255, 255, 255, 0.9)", "#e0e0e0", "#e6e6e6")
+        val colors = if (isDarcula) ThemeColors("#2b2d30", "#a9b7c6", "rgba(43, 45, 48, 0.9)", "#3c3f41", "#4c5052")
+        else ThemeColors("#ffffff", "#333333", "rgba(255, 255, 255, 0.9)", "#e0e0e0", "#e6e6e6")
 
-        // --- BUILD CONTENT ---
         val sb = StringBuilder()
         var chapterIndex = 0
         val tocItems = extractTocItems(book)
-        
+
         for (spineRef in book.spine.spineReferences) {
             val res = spineRef.resource
             val rawHtml = String(res.data, Charset.forName(res.inputEncoding ?: "UTF-8"))
             val doc = Jsoup.parse(rawHtml)
-            
-            // --- STEP 2: THE "DESPERATE" MATCHER ---
-            // Requirement 4: Support both <img> and <image> (SVG)
             val allImages = doc.select("img, image")
-            
             for (img in allImages) {
-                // Determine attribute: src for img, xlink:href for image (SVG)
                 val isSvgImage = img.tagName().equals("image", ignoreCase = true)
                 val attrName = if (isSvgImage) "xlink:href" else "src"
-                
                 var src = img.attr(attrName)
-                if (src.isEmpty() && isSvgImage) src = img.attr("href") // Fallback for simple href
-                
-                println("🖼️ HTML requesting src: [$src]")
-                
-                // Strategy: Clean the src
+                if (src.isEmpty() && isSvgImage) src = img.attr("href")
                 val rawKey = src.substringAfterLast('/').lowercase(Locale.getDefault()).replace("%20", " ")
-                // Also try full path matching (heuristic: if src contains /, allow it)
                 val fullKey = src.lowercase(Locale.getDefault())
-                
-                var finalData: String? = null
-                if (imageMap.containsKey(rawKey)) finalData = imageMap[rawKey]
-                else if (imageMap.containsKey(fullKey)) finalData = imageMap[fullKey]
-                
-                println("   👉 Trying to match key: [$rawKey] -> Result: ${if (finalData != null) "SUCCESS" else "FAILED"}")
-                
+                val finalData = imageMap[rawKey] ?: imageMap[fullKey]
                 if (finalData != null) {
                     img.attr(attrName, finalData)
-                    if (isSvgImage) img.attr("href", finalData) // Redundancy for safety
+                    if (isSvgImage) img.attr("href", finalData)
                 }
             }
-            
-            val id = "spine-$chapterIndex"
-            sb.append("<div id='$id' class='chapter'><div class='page-content'>")
-            sb.append(doc.body().html())
-            sb.append("</div></div>")
-            
+            sb.append("<div id='spine-$chapterIndex' class='chapter'><div class='page-content'>${doc.body().html()}</div></div>")
             chapterIndex++
         }
-        
-        val mappedToc = mapTocToSpineIds(tocItems, book)
-        return getAppHtml(mappedToc, sb.toString(), colors)
+        return getAppHtml(mapTocToSpineIds(tocItems, book), sb.toString(), colors)
     }
 
     fun getWelcomeHtml(isDarcula: Boolean): String {
-         val colors = if (isDarcula) ThemeColors("#2b2d30", "#aaa", "rgba(43, 45, 48, 0.9)", "#4e5254", "#4c5052") 
-                     else ThemeColors("#fff", "#333", "rgba(255, 255, 255, 0.9)", "#ddd", "#eee")
-         return getAppHtml(emptyList(), "<div style='display:flex;height:100%;justify-content:center;align-items:center;opacity:0.5;'><h2>Click 📂 to Open</h2></div>", colors)
+        val colors = if (isDarcula) ThemeColors("#2b2d30", "#aaa", "rgba(43, 45, 48, 0.9)", "#4e5254", "#4c5052")
+        else ThemeColors("#fff", "#333", "rgba(255, 255, 255, 0.9)", "#ddd", "#eee")
+        return getAppHtml(emptyList(), "<div style='display:flex;height:100%;justify-content:center;align-items:center;opacity:0.5;'><h2>Click ? to Open</h2></div>", colors)
     }
-    
-    // Requirement 3: Strict MIME Type Detection
+
     private fun getMimeType(href: String): String? {
         val name = href.lowercase(Locale.getDefault())
         return when {
@@ -497,7 +410,7 @@ object EpubParser {
         recurse(book.tableOfContents.tocReferences)
         return items.distinctBy { it.title }
     }
-    
+
     private fun mapTocToSpineIds(tocItems: List<TocItem>, book: Book): List<TocItem> {
         val spineRefs = book.spine.spineReferences
         return tocItems.map { item ->
