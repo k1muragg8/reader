@@ -10,7 +10,9 @@ import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.ui.jcef.JBCefBrowser
+import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
+import com.intellij.ui.JBColor
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.handler.CefLoadHandlerAdapter
@@ -21,7 +23,7 @@ import javax.swing.SwingUtilities
 class ReaderService(private val project: Project) {
 
     var browser: JBCefBrowser? = null
-    
+
     // JS Queries
     private var openFileQuery: JBCefJSQuery? = null
     private var saveProgressQuery: JBCefJSQuery? = null
@@ -29,7 +31,7 @@ class ReaderService(private val project: Project) {
     companion object {
         private const val KEY_LAST_PATH = "READER_MASTER_LAST_PATH"
         private const val KEY_LAST_PROGRESS = "READER_MASTER_LAST_PROGRESS"
-        
+
         fun getInstance(project: Project): ReaderService {
             return project.getService(ReaderService::class.java)
         }
@@ -37,38 +39,32 @@ class ReaderService(private val project: Project) {
 
     fun initBrowser(jbCefBrowser: JBCefBrowser) {
         this.browser = jbCefBrowser
-        
-        // 1. OPEN FILE QUERY
-        openFileQuery = JBCefJSQuery.create(jbCefBrowser)
+
+        // 核心修复：JBCefJSQuery 弃用警告处理
+        openFileQuery = JBCefJSQuery.create(jbCefBrowser as JBCefBrowserBase)
         openFileQuery?.addHandler { _ ->
             SwingUtilities.invokeLater { openFileChooser() }
             JBCefJSQuery.Response("OK")
         }
-        
-        // 2. SAVE PROGRESS QUERY
-        saveProgressQuery = JBCefJSQuery.create(jbCefBrowser)
+
+        saveProgressQuery = JBCefJSQuery.create(jbCefBrowser as JBCefBrowserBase)
         saveProgressQuery?.addHandler { progressStr ->
-            // Save progress (0.0 to 1.0, or page index)
             try {
                 PropertiesComponent.getInstance(project).setValue(KEY_LAST_PROGRESS, progressStr)
             } catch (e: Exception) {}
             JBCefJSQuery.Response("OK")
         }
-        
+
         jbCefBrowser.jbCefClient.addLoadHandler(object : CefLoadHandlerAdapter() {
             override fun onLoadEnd(browser: CefBrowser?, frame: CefFrame?, httpStatusCode: Int) {
-                // Reinject on reload
                 injectJsBridge(browser)
-                
-                // RESTORE PROGRESS
                 restoreProgress(browser)
             }
         }, jbCefBrowser.cefBrowser)
-        
-        // AUTO-LOAD LAST BOOK
+
         autoLoadLastBook()
     }
-    
+
     private fun autoLoadLastBook() {
         val lastPath = PropertiesComponent.getInstance(project).getValue(KEY_LAST_PATH)
         if (!lastPath.isNullOrEmpty()) {
@@ -80,32 +76,33 @@ class ReaderService(private val project: Project) {
     }
 
     private fun injectJsBridge(browser: CefBrowser?) {
+        if (browser == null) return // 增加空校验，消除后续冗余安全调用警告
         val js = """
             window.readerBridge = {
                 openFile: function() { ${openFileQuery?.inject("''")} },
                 saveProgress: function(val) { ${saveProgressQuery?.inject("val")} }
             };
         """.trimIndent()
-        browser?.executeJavaScript(js, browser?.url, 0)
+        // 修复：既然 browser 已校验不为空，此处不再使用冗余的 ? 号
+        browser.executeJavaScript(js, browser.url, 0)
     }
-    
+
     private fun restoreProgress(browser: CefBrowser?) {
+        if (browser == null) return
         val lastProgress = PropertiesComponent.getInstance(project).getValue(KEY_LAST_PROGRESS)
         if (!lastProgress.isNullOrEmpty()) {
-             // Execute JS to restore.
-             browser?.executeJavaScript("if(window.readerRestore) window.readerRestore('$lastProgress');", browser?.url, 0)
+            browser.executeJavaScript("if(window.readerRestore) window.readerRestore('$lastProgress');", browser.url, 0)
         }
     }
 
     fun openFileChooser() {
         val descriptor = FileChooserDescriptor(true, false, false, false, false, false)
-            .withTitle("打开书籍 (Open Book)")
+            .withTitle("Open Book")
             .withFileFilter { it.extension?.equals("epub", ignoreCase = true) == true }
 
         val virtualFile = FileChooser.chooseFile(descriptor, project, null)
         if (virtualFile != null) {
             val file = File(virtualFile.path)
-            // SAVE PATH
             PropertiesComponent.getInstance(project).setValue(KEY_LAST_PATH, file.absolutePath)
             loadEpub(file)
         }
@@ -113,17 +110,15 @@ class ReaderService(private val project: Project) {
 
     fun loadEpub(file: File) {
         if (browser == null) return
-        
-        // BACKGROUND TASK (Fix "SlowOperations on EDT" & "Write-unsafe context")
+
         ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Loading Book...", false) {
             override fun run(indicator: ProgressIndicator) {
                 try {
                     indicator.text = "Parsing EPUB..."
-                    // HEAVY LIFTING (Background Thread)
-                    val isDarcula = com.intellij.util.ui.StartupUiUtil.isUnderDarcula
+                    // 使用现代 API 处理主题判定警告
+                    val isDarcula = !JBColor.isBright()
                     val htmlContent = EpubParser.loadEpub(file, isDarcula)
-                    
-                    // UPDATE UI ON EDT
+
                     ApplicationManager.getApplication().invokeLater {
                         browser?.loadHTML(htmlContent, "http://readermaster/")
                     }
@@ -135,8 +130,8 @@ class ReaderService(private val project: Project) {
             }
         })
     }
-    
-    // Helper wrappers
+
+    // --- 恢复丢失的功能组件 (Actions.kt 所需) ---
     fun nextPage() = browser?.cefBrowser?.executeJavaScript("window.readerNext()", null, 0)
     fun prevPage() = browser?.cefBrowser?.executeJavaScript("window.readerPrev()", null, 0)
     fun zoomIn() = browser?.cefBrowser?.executeJavaScript("window.readerZoomIn()", null, 0)
