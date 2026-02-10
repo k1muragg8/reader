@@ -36,10 +36,9 @@
 
     <change-notes><![CDATA[
     <ul>
-        <li>Fixed image rendering issues on Linux/JCEF using Base64 injection.</li>
-        <li>Optimized performance with background thread parsing.</li>
-        <li>Improved UI by removing excessive margins.</li>
-        <li>Added progress persistence.</li>
+        <li><b>New Feature</b>: Moved search button to top-right for better accessibility.</li>
+        <li><b>Fix</b>: Fixed layout deformation when jumping to search results.</li>
+        <li><b>Improvement</b>: Enhanced search result highlighting with visual flash effect.</li>
     </ul>
     ]]></change-notes>
     <depends>com.intellij.modules.platform</depends>

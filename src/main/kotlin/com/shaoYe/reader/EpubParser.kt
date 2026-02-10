@@ -117,26 +117,68 @@ object EpubParser {
                     .toc-item:hover { background: var(--hover-bg); opacity: 1; border-left-color: var(--icon-stroke); }
                     #sidebar-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.3); z-index: 9000; backdrop-filter: blur(2px); display: none; }
                     #sidebar.open + #sidebar-backdrop { display: block; }
+                    
+                    /* --- Search Sidebar --- */
+                    #search-sidebar {
+                        position: fixed; top: 0; right: 0; bottom: 0; width: 320px;
+                        background: var(--sidebar-bg); backdrop-filter: blur(20px);
+                        border-left: 0.5px solid var(--border); transform: translateX(100%); 
+                        transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+                        z-index: 9999; display: flex; flex-direction: column; padding-top: 50px;
+                    }
+                    #search-sidebar.open { transform: translateX(0); }
+                    
+                    .search-header { 
+                        padding: 15px; border-bottom: 0.5px solid var(--border); 
+                        display: flex; gap: 8px; align-items: center; 
+                    }
+                    #search-input {
+                        flex: 1; height: 32px; border-radius: 6px; border: 1px solid var(--border);
+                        background: rgba(128,128,128, 0.1); color: var(--text); padding: 0 10px;
+                        font-size: 13px; outline: none; transition: all 0.2s;
+                    }
+                    #search-input:focus { background: var(--bg); border-color: var(--icon-stroke); }
+                    
+                    #search-results { flex: 1; overflow-y: auto; padding: 10px 0; }
+                    .search-result-item {
+                        padding: 12px 20px; cursor: pointer; border-bottom: 0.5px solid rgba(128,128,128, 0.1);
+                        transition: background 0.2s;
+                    }
+                    .search-result-item:hover { background: var(--hover-bg); }
+                    .search-result-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text); }
+                    .search-result-snippet { font-size: 12px; color: var(--text); opacity: 0.7; line-height: 1.4; }
+                    .search-highlight { background-color: #ffeb3b; color: #000; border-radius: 2px; box-shadow: 0 0 2px rgba(0,0,0,0.2); }
+                    .search-match { font-weight: bold; color: var(--icon-stroke); background: rgba(255, 235, 59, 0.3); }
                 </style>
             </head>
             <body>
                 <div id="toolbar">
                     <div class="toolbar-group">
-                        <button id="btn-chapters" class="icon-btn"><svg class="feather" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
-                        <button id="btn-open" class="icon-btn"><svg class="feather" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></button>
+                        <button id="btn-chapters" class="icon-btn" title="目录"><svg class="feather" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+                        <button id="btn-open" class="icon-btn" title="打开文件"><svg class="feather" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></button>
                     </div>
                     <div class="toolbar-group">
                         <input type="number" id="jump-input" placeholder="#">
                         <span id="page-info">-- / --</span>
                     </div>
-                    <div class="toolbar-group"></div>
+                    <div class="toolbar-group">
+                        <button id="btn-search" class="icon-btn" title="搜索"><svg class="feather" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
+                    </div>
                 </div>
                 
                 <div id="sidebar">
-                    <div class="sidebar-header"><span class="sidebar-title">Chapters</span><button id="btn-close-sidebar"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div>
+                    <div class="sidebar-header"><span class="sidebar-title">目录</span><button id="btn-close-sidebar"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div>
                     <div class="toc-list">$tocListHtml</div>
                 </div>
                 <div id="sidebar-backdrop"></div>
+
+                <div id="search-sidebar">
+                    <div class="search-header">
+                        <input type="text" id="search-input" placeholder="全文搜索...">
+                        <button id="btn-close-search" class="icon-btn"><svg class="feather" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                    </div>
+                    <div id="search-results"></div>
+                </div>
 
                 <div id="content">
                     <div id="reader-wrapper" tabindex="0">
@@ -326,6 +368,153 @@ object EpubParser {
                     
                     wrapper.addEventListener('wheel', (e) => { e.deltaY > 0 ? navNext() : navPrev(); }, { passive: true });
                     window.readerNext = navNext; window.readerPrev = navPrev;
+                    // --- Search Logic ---
+                    const searchSidebar = document.getElementById('search-sidebar');
+                    const searchInput = document.getElementById('search-input');
+                    const searchResults = document.getElementById('search-results');
+                    let searchMatches = [];
+
+                    function toggleSearchSidebar() {
+                         searchSidebar.classList.toggle('open');
+                         if(searchSidebar.classList.contains('open')) {
+                             setTimeout(() => searchInput.focus(), 100);
+                             // If mobile/narrow, close chapter sidebar
+                             sidebar.classList.remove('open');
+                         }
+                    }
+
+                    // Bind Search Events
+                    document.getElementById('btn-search').addEventListener('click', toggleSearchSidebar);
+                    document.getElementById('btn-close-search').addEventListener('click', toggleSearchSidebar);
+                    searchInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') performSearch(); });
+
+                    function performSearch() {
+                        const query = searchInput.value.trim();
+                        if (!query) return;
+
+                        // 1. Clear previous
+                        clearHighlights();
+                        searchResults.innerHTML = '<div style="padding:20px;text-align:center;opacity:0.5">搜索中...</div>';
+                        searchMatches = [];
+
+                        // 2. Find matches (Text Node Traversal)
+                        // delayed to allow UI update
+                        setTimeout(() => {
+                            const regex = new RegExp(escapeRegex(query), 'gi');
+                            const walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
+                            let node;
+                            const nodesToReplace = [];
+
+                            while(node = walker.nextNode()) {
+                                if (node.parentNode.tagName === 'SCRIPT' || node.parentNode.tagName === 'STYLE') continue;
+                                if (regex.test(node.nodeValue)) {
+                                    nodesToReplace.push(node);
+                                }
+                                regex.lastIndex = 0; // reset
+                            }
+
+                            // 3. Highlight and Collect
+                            let matchCount = 0;
+                            nodesToReplace.forEach(textNode => {
+                                const text = textNode.nodeValue;
+                                const parent = textNode.parentNode;
+                                const frag = document.createDocumentFragment();
+                                let lastIdx = 0;
+                                let match;
+                                regex.lastIndex = 0;
+
+                                while ((match = regex.exec(text)) !== null) {
+                                    // Append text before match
+                                    frag.appendChild(document.createTextNode(text.substring(lastIdx, match.index)));
+                                    
+                                    // Create highlight span
+                                    const span = document.createElement('span');
+                                    span.className = 'search-highlight';
+                                    span.id = 'search-match-' + matchCount;
+                                    span.textContent = match[0];
+                                    frag.appendChild(span);
+                                    
+                                    // Collect result for sidebar
+                                    // Get snippet: 20 chars before and after
+                                    const start = Math.max(0, match.index - 20);
+                                    const end = Math.min(text.length, match.index + match[0].length + 20);
+                                    const snippet = text.substring(start, end).replace(match[0], `<span class="search-match">${'$'}{match[0]}</span>`);
+                                    
+                                    searchMatches.push({
+                                        id: 'search-match-' + matchCount,
+                                        text: '... ' + snippet + ' ...',
+                                        // Try to find a chapter title? simple for now
+                                    });
+
+                                    lastIdx = match.index + match[0].length;
+                                    matchCount++;
+                                }
+                                // Append remaining text
+                                frag.appendChild(document.createTextNode(text.substring(lastIdx)));
+                                parent.replaceChild(frag, textNode);
+                            });
+
+                            renderSearchResults(matchCount);
+                        }, 50);
+                    }
+
+                    function clearHighlights() {
+                        // Crucial: Restore original text nodes to avoid DOM explosion on repeated searches
+                        // Simple cleanup: remove spans, keep text. 
+                        // Note: normalize() joins adjacent text nodes back together.
+                        const highlights = textContainer.querySelectorAll('.search-highlight');
+                        highlights.forEach(span => {
+                            const parent = span.parentNode;
+                            parent.replaceChild(document.createTextNode(span.textContent), span);
+                            parent.normalize();
+                        });
+                        searchResults.innerHTML = '';
+                    }
+
+                    function renderSearchResults(count) {
+                        if (count === 0) {
+                            searchResults.innerHTML = '<div style="padding:20px;text-align:center;opacity:0.5">未找到结果</div>';
+                            return;
+                        }
+                        
+                        let html = `<div style="padding:10px 20px;font-size:12px;opacity:0.6">找到 ${'$'}{count} 个结果</div>`;
+                        searchMatches.forEach((m, i) => {
+                            html += `
+                                <div class="search-result-item" onclick="jumpToMatch('${'$'}{m.id}')">
+                                    <div class="search-result-title">结果 ${'$'}{i+1}</div>
+                                    <div class="search-result-snippet">${'$'}{m.text}</div>
+                                </div>
+                            `;
+                        });
+                        searchResults.innerHTML = html;
+                    }
+
+                    window.jumpToMatch = function(id) {
+                         const el = document.getElementById(id);
+                         if(el) {
+                             const w = wrapper.clientWidth;
+                             const offset = el.offsetLeft;
+                             // Calculate the start of the column/page
+                             const targetScroll = Math.floor(offset / w) * w;
+                             wrapper.scrollTo({ left: targetScroll, behavior: 'auto' });
+                             
+                             // Flash effect (background color)
+                             const oldBg = el.style.backgroundColor;
+                             el.style.transition = 'background-color 0.5s ease';
+                             el.style.backgroundColor = '#ff9800'; // Orange flash
+                             
+                             setTimeout(() => {
+                                 el.style.backgroundColor = oldBg || ''; 
+                             }, 500);
+                             
+                             // Close sidebar on mobile/if preferred, but keeping open is usually better for "Next/Prev" feeling
+                             if (window.innerWidth < 600) toggleSearchSidebar();
+                         }
+                    };
+
+                    function escapeRegex(string) {
+                        return string.replace(/[.*+?^%${'$'}{}()|[\]\\]/g, '\\${'$'}&'); // ${'$'}& means the whole matched string
+                    }
                 </script>
             </body>
             </html>
@@ -347,7 +536,7 @@ object EpubParser {
                     val dataUri = "data:$mime;base64,$b64"
                     imageMap[href.lowercase(Locale.getDefault())] = dataUri
                     imageMap[filename.lowercase(Locale.getDefault())] = dataUri
-                } catch (e: Exception) { }
+                } catch (_: Exception) { }
             }
         }
 
@@ -355,10 +544,9 @@ object EpubParser {
         else ThemeColors("#ffffff", "#333333", "rgba(255, 255, 255, 0.9)", "#e0e0e0", "#e6e6e6")
 
         val sb = StringBuilder()
-        var chapterIndex = 0
         val tocItems = extractTocItems(book)
 
-        for (spineRef in book.spine.spineReferences) {
+        for ((chapterIndex, spineRef) in book.spine.spineReferences.withIndex()) {
             val res = spineRef.resource
             val rawHtml = String(res.data, Charset.forName(res.inputEncoding ?: "UTF-8"))
             val doc = Jsoup.parse(rawHtml)
@@ -377,7 +565,6 @@ object EpubParser {
                 }
             }
             sb.append("<div id='spine-$chapterIndex' class='chapter'><div class='page-content'>${doc.body().html()}</div></div>")
-            chapterIndex++
         }
         return getAppHtml(mapTocToSpineIds(tocItems, book), sb.toString(), colors)
     }
