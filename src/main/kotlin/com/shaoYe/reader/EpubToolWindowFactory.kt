@@ -30,7 +30,8 @@ class EpubToolWindowFactory : ToolWindowFactory, DumbAware {
         // --- 核心修复：判定深色模式 ---
         // 使用 !JBColor.isBright() 替代 UIUtil.isUnderDarcula()
         val isDarcula = !JBColor.isBright()
-        browser.loadHTML(EpubParser.getWelcomeHtml(isDarcula))
+        val scheme = com.intellij.openapi.editor.colors.EditorColorsManager.getInstance().globalScheme
+        browser.loadHTML(EpubParser.getWelcomeHtml(isDarcula, scheme.editorFontSize))
 
         val contentFactory = ContentFactory.getInstance()
         val content = contentFactory.createContent(panel, "", false)

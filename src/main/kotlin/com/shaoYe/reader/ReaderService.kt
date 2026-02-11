@@ -13,6 +13,8 @@ import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
 import com.intellij.ui.JBColor
+import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.openapi.editor.colors.EditorColorsListener
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.handler.CefLoadHandlerAdapter
@@ -59,10 +61,27 @@ class ReaderService(private val project: Project) {
             override fun onLoadEnd(browser: CefBrowser?, frame: CefFrame?, httpStatusCode: Int) {
                 injectJsBridge(browser)
                 restoreProgress(browser)
+                
+                // Inject initial font size validation
+                val scheme = EditorColorsManager.getInstance().globalScheme
+                updateFontSize(scheme.editorFontSize)
             }
         }, jbCefBrowser.cefBrowser)
 
+        // Listen for font size changes
+        val connection = project.messageBus.connect()
+        connection.subscribe(EditorColorsManager.TOPIC, EditorColorsListener {
+             val scheme = EditorColorsManager.getInstance().globalScheme
+             updateFontSize(scheme.editorFontSize)
+        })
+
         autoLoadLastBook()
+    }
+
+    private fun updateFontSize(size: Int) {
+        // Update CSS variable
+        val js = "document.documentElement.style.setProperty('--font-size', '${size}px');"
+        browser?.cefBrowser?.executeJavaScript(js, null, 0)
     }
 
     private fun autoLoadLastBook() {
@@ -117,7 +136,8 @@ class ReaderService(private val project: Project) {
                     indicator.text = "Parsing EPUB..."
                     // 使用现代 API 处理主题判定警告
                     val isDarcula = !JBColor.isBright()
-                    val htmlContent = EpubParser.loadEpub(file, isDarcula)
+                    val scheme = EditorColorsManager.getInstance().globalScheme
+                    val htmlContent = EpubParser.loadEpub(file, isDarcula, scheme.editorFontSize)
 
                     ApplicationManager.getApplication().invokeLater {
                         browser?.loadHTML(htmlContent, "http://readermaster/")

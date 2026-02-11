@@ -11,7 +11,7 @@ import java.util.Locale
 
 object EpubParser {
 
-    private fun getAppHtml(tocItems: List<TocItem>, contentHtml: String, colors: ThemeColors): String {
+    private fun getAppHtml(tocItems: List<TocItem>, contentHtml: String, colors: ThemeColors, fontSize: Int): String {
         val tocListHtml = if (tocItems.isEmpty()) {
             "<div style='padding:10px;color:#888;'>No chapters</div>"
         } else {
@@ -33,6 +33,7 @@ object EpubParser {
                         --border: ${colors.border};
                         --icon-stroke: ${colors.text};
                         --hover-bg: ${if (colors.bg.startsWith("#2")) "rgba(255,255,255,0.08)" else "rgba(0,0,0,0.04)"};
+                        --font-size: ${fontSize}px;
                     }
                     
                     body { 
@@ -94,7 +95,7 @@ object EpubParser {
                     
                     .chapter { break-before: column; }
                     .page-content { padding: 20px 16px; margin: 0; width: 100%; box-sizing: border-box; }
-                    p { line-height: 1.8; margin-bottom: 1.2em; text-align: justify; font-size: 16px; letter-spacing: 0.01em; }
+                    p { line-height: 1.8; margin-bottom: 1.2em; text-align: justify; font-size: var(--font-size); letter-spacing: 0.01em; }
                     img { max-width: 100%; height: auto; display: block; margin: 20px auto; border-radius: 8px; }
                     
                     ::-webkit-scrollbar { display: none !important; }
@@ -362,8 +363,8 @@ object EpubParser {
                     document.addEventListener('keydown', function(e) {
                          const k = e.key.toLowerCase();
                          if (document.activeElement === jumpInput && k !== 'enter') return;
-                         if (k === 'arrowright' || k === 'd') navNext();
-                         else if (k === 'arrowleft' || k === 'a') navPrev();
+                         if (k === 'd') navNext();
+                         else if (k === 'a') navPrev();
                     });
                     
                     wrapper.addEventListener('wheel', (e) => { e.deltaY > 0 ? navNext() : navPrev(); }, { passive: true });
@@ -521,7 +522,7 @@ object EpubParser {
         """.trimIndent()
     }
 
-    fun loadEpub(file: File, isDarcula: Boolean): String {
+    fun loadEpub(file: File, isDarcula: Boolean, fontSize: Int): String {
         val epubReader = EpubReader()
         val book = epubReader.readEpub(file.inputStream())
         val imageMap = mutableMapOf<String, String>()
@@ -566,13 +567,13 @@ object EpubParser {
             }
             sb.append("<div id='spine-$chapterIndex' class='chapter'><div class='page-content'>${doc.body().html()}</div></div>")
         }
-        return getAppHtml(mapTocToSpineIds(tocItems, book), sb.toString(), colors)
+        return getAppHtml(mapTocToSpineIds(tocItems, book), sb.toString(), colors, fontSize)
     }
 
-    fun getWelcomeHtml(isDarcula: Boolean): String {
+    fun getWelcomeHtml(isDarcula: Boolean, fontSize: Int): String {
         val colors = if (isDarcula) ThemeColors("#2b2d30", "#aaa", "rgba(43, 45, 48, 0.9)", "#4e5254", "#4c5052")
         else ThemeColors("#fff", "#333", "rgba(255, 255, 255, 0.9)", "#ddd", "#eee")
-        return getAppHtml(emptyList(), "<div style='display:flex;height:100%;justify-content:center;align-items:center;opacity:0.5;'><h2>Click ? to Open</h2></div>", colors)
+        return getAppHtml(emptyList(), "<div style='display:flex;height:100%;justify-content:center;align-items:center;opacity:0.5;'><h2>Click ? to Open</h2></div>", colors, fontSize)
     }
 
     private fun getMimeType(href: String): String? {

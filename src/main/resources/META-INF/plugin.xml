@@ -8,7 +8,8 @@
   <h3>English</h3>
   <p>Reader Master: A high-performance EPUB reader integrated into your IDE. Read technical books while coding.</p>
   <ul>
-    <li><b>Controls</b>: Supports left and right arrow keys, A/D keys, and mouse wheel.</li>
+    <li><b>Font Sync</b>: Reader font size automatically syncs with your IDE editor font size.</li>
+    <li><b>Controls</b>: Supports A/D keys and mouse wheel.</li>
     <li><b>Persistence</b>: Automatically saves your reading progress.</li>
     <li><b>Contact</b>: k1muragg8@gmail.com</li>
   </ul>
@@ -18,7 +19,8 @@
   <h3>简体中文</h3>
   <p>Reader Master (阅读大师)：集成于 IDE 内部的高性能 EPUB 阅读器。让您在编写代码的同时无缝阅读技术书籍。</p>
   <ul>
-    <li><b>快捷翻页</b>：支持左右方向键或 A/D 键以及鼠标滚轮。</li>
+    <li><b>字体同步</b>：阅读器字体大小自动跟随 IDE 编辑器字体设置。</li>
+    <li><b>快捷翻页</b>：支持 A/D 键以及鼠标滚轮。</li>
     <li><b>进度记忆</b>：自动保存上次阅读的书籍及具体位置。</li>
     <li><b>联系作者</b>：k1muragg8@gmail.com</li>
   </ul>
@@ -28,7 +30,8 @@
   <h3>日本語</h3>
   <p>Reader Master：IDEに統合された高性能EPUBリーダー。コードを書きながら技術書をスムーズに閲覧できます。</p>
   <ul>
-    <li><b>操作方法</b>：左右の矢印キー、A/D キー、マウス ホイールをサポートします。</li>
+    <li><b>フォント同期</b>：リーダーのフォントサイズはIDEエディタ設定と自動的に同期します。</li>
+    <li><b>操作方法</b>：A/D キー、マウス ホイールをサポートします。</li>
     <li><b>自動保存</b>：読書の進捗状況を自動的に保存します。</li>
     <li><b>連絡先</b>：k1muragg8@gmail.com</li>
   </ul>
@@ -36,9 +39,9 @@
 
     <change-notes><![CDATA[
     <ul>
-        <li><b>New Feature</b>: Moved search button to top-right for better accessibility.</li>
-        <li><b>Fix</b>: Fixed layout deformation when jumping to search results.</li>
-        <li><b>Improvement</b>: Enhanced search result highlighting with visual flash effect.</li>
+        <li><b>New Feature</b>: Added automatic font size synchronization with IDE editor settings.</li>
+        <li><b>Improvement</b>: Removed arrow key navigation to prevent conflict with IDE editor cursor movement.</li>
+        <li><b>Update</b>: Updated plugin description and documentation.</li>
     </ul>
     ]]></change-notes>
     <depends>com.intellij.modules.platform</depends>
@@ -51,10 +54,8 @@
 
     <actions>
         <action id="ShaoYe.NextPage" class="com.shaoYe.reader.NextPageAction" text="下一页 (Next Page)" description="翻到下一页">
-            <keyboard-shortcut keymap="$default" first-keystroke="RIGHT"/>
         </action>
         <action id="ShaoYe.PrevPage" class="com.shaoYe.reader.PrevPageAction" text="上一页 (Prev Page)" description="翻到上一页">
-            <keyboard-shortcut keymap="$default" first-keystroke="LEFT"/>
         </action>
         <action id="ShaoYe.ZoomIn" class="com.shaoYe.reader.ZoomInAction" text="放大字体 (Zoom In)" description="放大字体">
             <keyboard-shortcut keymap="$default" first-keystroke="alt EQUALS"/>
