@@ -208,6 +208,9 @@ object EpubParser {
                          // 缓存所有可能的锚点（包含列表项等）
                          allElements = Array.from(textContainer.querySelectorAll('p, h1, h2, h3, img, li, blockquote'));
                          updateLayout(); 
+                         // 修复：初次加载时可能因为容器尺寸未就绪导致变形，延时再排版一次
+                         setTimeout(updateLayout, 100);
+                         
                          wrapper.focus();
                          // Bind Events
                          document.getElementById('btn-chapters').addEventListener('click', toggleSidebar);
@@ -361,10 +364,19 @@ object EpubParser {
                     };
 
                     document.addEventListener('keydown', function(e) {
-                         const k = e.key.toLowerCase();
-                         if (document.activeElement === jumpInput && k !== 'enter') return;
-                         if (k === 'd') navNext();
-                         else if (k === 'a') navPrev();
+                         const k = e.key; // Use case-sensitive key first
+                         if (document.activeElement === jumpInput && k !== 'Enter') return;
+                         
+                         // 禁用默认的左右方向键滚动
+                         if (k === 'ArrowLeft' || k === 'ArrowRight') {
+                             e.preventDefault();
+                             return; 
+                         }
+
+                         // Old generic handlers
+                         const lowerK = k.toLowerCase();
+                         if (lowerK === 'd') navNext();
+                         else if (lowerK === 'a') navPrev();
                     });
                     
                     wrapper.addEventListener('wheel', (e) => { e.deltaY > 0 ? navNext() : navPrev(); }, { passive: true });

@@ -39,9 +39,9 @@
 
     <change-notes><![CDATA[
     <ul>
-        <li><b>New Feature</b>: Added automatic font size synchronization with IDE editor settings.</li>
-        <li><b>Improvement</b>: Removed arrow key navigation to prevent conflict with IDE editor cursor movement.</li>
-        <li><b>Update</b>: Updated plugin description and documentation.</li>
+        <li><b>Improvement</b>: Disabled left/right arrow key navigation to prevent conflict with editor scrolling and improve user experience.</li>
+        <li><b>Fix</b>: Fixed page deformation issue where layout was incorrect upon first open.</li>
+        <li><b>Update</b>: General performance improvements.</li>
     </ul>
     ]]></change-notes>
     <depends>com.intellij.modules.platform</depends>
