@@ -59,7 +59,6 @@ object EpubParser {
                         background: var(--bg); display: grid; grid-template-columns: 1fr auto 1fr; 
                         align-items: center; padding: 0 12px; z-index: 1002; user-select: none;
                         transform: translateY(-100%); transition: transform 0.3s ease;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
                     }
                     /* Show toolbar when body has 'hovering' class */
                     body.hovering #toolbar {
@@ -378,23 +377,36 @@ object EpubParser {
                         }
                     };
 
-                    document.addEventListener('keydown', function(e) {
-                         const k = e.key; // Use case-sensitive key first
-                         if (document.activeElement === jumpInput && k !== 'Enter') return;
-                         
-                         // 禁用默认的左右方向键滚动
-                         if (k === 'ArrowLeft' || k === 'ArrowRight') {
-                             e.preventDefault();
-                             return; 
-                         }
+                     document.addEventListener('keydown', function(e) {
+                          const k = e.key; // Use case-sensitive key first
+                          const code = e.code;
+                          if (document.activeElement === jumpInput && k !== 'Enter') return;
+                          
+                          // Handle Numpad keys first (regardless of NumLock state)
+                          if (code === 'Numpad6') {
+                              e.preventDefault();
+                              navNext();
+                              return;
+                          }
+                          if (code === 'Numpad4') {
+                              e.preventDefault();
+                              navPrev();
+                              return;
+                          }
 
-                         // Old generic handlers
-                         const lowerK = k.toLowerCase();
-                         if (lowerK === 'd') navNext();
-                         else if (lowerK === 'a') navPrev();
-                    });
+                          // 禁用默认的左右方向键滚动
+                          if (k === 'ArrowLeft' || k === 'ArrowRight') {
+                              e.preventDefault();
+                              return; 
+                          }
+ 
+                          // Old generic handlers
+                          const lowerK = k.toLowerCase();
+                          if (lowerK === 'd') navNext();
+                          else if (lowerK === 'a') navPrev();
+                     });
                     
-                    wrapper.addEventListener('wheel', (e) => { e.deltaY > 0 ? navNext() : navPrev(); }, { passive: true });
+                    // wrapper.addEventListener('wheel', (e) => { e.deltaY > 0 ? navNext() : navPrev(); }, { passive: true });
                     window.readerNext = navNext; window.readerPrev = navPrev;
                     // --- Search Logic ---
                     const searchSidebar = document.getElementById('search-sidebar');
