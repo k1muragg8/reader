@@ -379,21 +379,8 @@ object EpubParser {
 
                      document.addEventListener('keydown', function(e) {
                           const k = e.key; // Use case-sensitive key first
-                          const code = e.code;
                           if (document.activeElement === jumpInput && k !== 'Enter') return;
                           
-                          // Handle Numpad keys first (regardless of NumLock state)
-                          if (code === 'Numpad6') {
-                              e.preventDefault();
-                              navNext();
-                              return;
-                          }
-                          if (code === 'Numpad4') {
-                              e.preventDefault();
-                              navPrev();
-                              return;
-                          }
-
                           // 禁用默认的左右方向键滚动
                           if (k === 'ArrowLeft' || k === 'ArrowRight') {
                               e.preventDefault();

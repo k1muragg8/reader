@@ -9,7 +9,7 @@
   <p>Reader Master: A high-performance EPUB reader integrated into your IDE. Read technical books while coding.</p>
   <ul>
     <li><b>Font Sync</b>: Reader font size automatically syncs with your IDE editor font size.</li>
-    <li><b>Controls</b>: Supports A/D keys and mouse wheel.</li>
+    <li><b>Controls</b>: Supports A/D keys for page navigation.</li>
     <li><b>Persistence</b>: Automatically saves your reading progress.</li>
     <li><b>Auto-Hide Toolbar</b>: The toolbar is hidden by default and appears when you hover over the reader window.</li>
     <li><b>Contact</b>: k1muragg8@gmail.com</li>
@@ -21,7 +21,7 @@
   <p>Reader Master (阅读大师)：集成于 IDE 内部的高性能 EPUB 阅读器。让您在编写代码的同时无缝阅读技术书籍。</p>
   <ul>
     <li><b>字体同步</b>：阅读器字体大小自动跟随 IDE 编辑器字体设置。</li>
-    <li><b>快捷翻页</b>：支持 A/D 键以及鼠标滚轮。</li>
+    <li><b>快捷翻页</b>：支持 A/D 键翻页。</li>
     <li><b>进度记忆</b>：自动保存上次阅读的书籍及具体位置。</li>
     <li><b>自动隐藏工具栏</b>：工具栏默认隐藏，鼠标悬停在阅读器窗口时自动显示。</li>
     <li><b>联系作者</b>：k1muragg8@gmail.com</li>
@@ -33,7 +33,7 @@
   <p>Reader Master：IDEに統合された高性能EPUBリーダー。コードを書きながら技術書をスムーズに閲覧できます。</p>
   <ul>
     <li><b>フォント同期</b>：リーダーのフォントサイズはIDEエディタ設定と自動的に同期します。</li>
-    <li><b>操作方法</b>：A/D キー、マウス ホイールをサポートします。</li>
+    <li><b>操作方法</b>：A/D キーをサポートします。</li>
     <li><b>自動保存</b>：読書の進捗状況を自動的に保存します。</li>
     <li><b>ツールバーの自動非表示</b>：ツールバーはデフォルトで非表示になっており、リーダーウィンドウにマウスを合わせると表示されます。</li>
     <li><b>連絡先</b>：k1muragg8@gmail.com</li>
@@ -42,10 +42,9 @@
 
     <change-notes><![CDATA[
     <ul>
-        <li><b>Improvement</b>: Disabled left/right arrow key navigation to prevent conflict with editor scrolling and improve user experience.</li>
-        <li><b>Fix</b>: Fixed page deformation issue where layout was incorrect upon first open.</li>
-        <li><b>New Feature</b>: Added auto-hide toolbar functionality for a cleaner reading experience. Toolbar appears on hover.</li>
-        <li><b>Update</b>: General performance improvements.</li>
+        <li><b>Improvement</b>: Removed mouse wheel scrolling to prevent accidental page turns.</li>
+        <li><b>UI Fix</b>: Removed the shadow from the auto-hiding top toolbar for a cleaner look.</li>
+        <li><b>Refinement</b>: Optimized event handling for smoother navigation.</li>
     </ul>
     ]]></change-notes>
     <depends>com.intellij.modules.platform</depends>
