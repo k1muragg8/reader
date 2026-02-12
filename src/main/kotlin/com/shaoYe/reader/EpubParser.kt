@@ -52,11 +52,22 @@ object EpubParser {
                         scroll-snap-type: none !important;
                     }
 
+                    /* Removing #toolbar-trigger as we use body hover now */
+
                     #toolbar {
                         position: fixed; top: 0; left: 0; right: 0; height: 50px; 
                         background: var(--bg); display: grid; grid-template-columns: 1fr auto 1fr; 
-                        align-items: center; padding: 0 12px; z-index: 1000; user-select: none;
+                        align-items: center; padding: 0 12px; z-index: 1002; user-select: none;
+                        transform: translateY(-100%); transition: transform 0.3s ease;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
                     }
+                    /* Show toolbar when body has 'hovering' class */
+                    body.hovering #toolbar {
+                        transform: translateY(0);
+                    }
+                    
+                    /* Sidebar z-index adjustment if needed, but 9999 is fine */
+
                     .toolbar-group { display: flex; align-items: center; gap: 8px; }
                     .toolbar-group:nth-child(1) { justify-self: start; }
                     .toolbar-group:nth-child(2) { justify-self: center; }
@@ -77,7 +88,7 @@ object EpubParser {
                         font-weight: 500; font-family: -apple-system, sans-serif; cursor: default; white-space: nowrap;
                     }
                     
-                    #content { position: absolute; top: 50px; bottom: 0; left: 0; right: 0; overflow: hidden; }
+                    #content { position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow: hidden; }
 
                     #reader-wrapper {
                         width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden;
@@ -105,7 +116,7 @@ object EpubParser {
                         background: var(--sidebar-bg); backdrop-filter: blur(20px);
                         border-right: 0.5px solid var(--border); transform: translateX(-100%); 
                         transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-                        z-index: 9999; display: flex; flex-direction: column; padding-top: 50px;
+                        z-index: 9999; display: flex; flex-direction: column; padding-top: 0;
                     }
                     #sidebar.open { transform: translateX(0); }
                     .sidebar-header { position: relative; height: 50px; padding: 0 40px 0 20px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; }
@@ -125,7 +136,7 @@ object EpubParser {
                         background: var(--sidebar-bg); backdrop-filter: blur(20px);
                         border-left: 0.5px solid var(--border); transform: translateX(100%); 
                         transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-                        z-index: 9999; display: flex; flex-direction: column; padding-top: 50px;
+                        z-index: 9999; display: flex; flex-direction: column; padding-top: 0;
                     }
                     #search-sidebar.open { transform: translateX(0); }
                     
@@ -218,6 +229,10 @@ object EpubParser {
                          backdrop.addEventListener('click', toggleSidebar);
                          document.getElementById('btn-open').addEventListener('click', () => { if(window.readerBridge) window.readerBridge.openFile(); });
                          jumpInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') manualJump(); });
+                         
+                         // Window Hover Logic for Toolbar
+                         document.documentElement.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
+                         document.documentElement.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
                     };
 
                     function updateLayout(width) {
