@@ -87,14 +87,14 @@ object EpubParser {
                         font-weight: 500; font-family: -apple-system, sans-serif; cursor: default; white-space: nowrap;
                     }
                     
-                    #content { position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow: hidden; height: 100vh; }
+                    #content { position: absolute; top: 5px; bottom: 5px; left: 5px; right: 5px; overflow: hidden; }
 
                     #reader-wrapper {
                         width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden;
                         scroll-snap-type: x mandatory; scroll-behavior: smooth; outline: none;
                     }
                     
-                    #reader-text { height: 100vh; width: 100%; column-fill: auto; }
+                    #reader-text { height: 100%; width: 100%; column-fill: auto; }
                     
                     #jump-input {
                         width: 40px; height: 22px; background: transparent; color: var(--text);
@@ -104,7 +104,7 @@ object EpubParser {
                     #jump-input:focus { opacity: 1; outline: none; border-color: var(--text); }
                     
                     .chapter { break-before: column; }
-                    .page-content { padding: 2px; margin: 0; width: 100%; box-sizing: border-box; }
+                    .page-content { padding: 0; margin: 0; width: 100%; box-sizing: border-box; }
                     p { line-height: 1.8; margin-top: 0; margin-bottom: 0; text-indent: 2em; text-align: justify; font-size: var(--font-size); letter-spacing: 0.01em; }
                     img { max-width: 100%; height: auto; display: block; margin: 20px auto; border-radius: 8px; }
                     
