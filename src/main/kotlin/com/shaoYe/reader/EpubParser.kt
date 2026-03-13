@@ -255,16 +255,19 @@ object EpubParser {
                     });
 
                     function findCurrentAnchor() {
-                        if (allElements.length === 0) return;
-                        const wrapperRect = wrapper.getBoundingClientRect();
+                        const currentScroll = wrapper.scrollLeft;
+                        const viewWidth = wrapper.clientWidth;
                         
+                        // 遍历找锚点
+                        // 策略优化：不再只找“开始位置 > scroll”的
+                        // 而是找“结束位置 > scroll”的第一个元素（即当前视野里的第一个元素，哪怕它跨页了）
                         for (let i = 0; i < allElements.length; i++) {
                             const el = allElements[i];
-                            const rect = el.getBoundingClientRect();
+                            const elStart = el.offsetLeft;
+                            const elEnd = elStart + el.offsetWidth;
                             
-                            // 检查元素是否在当前视口的可见区域内
-                            // Check if the element is visible in the current viewport
-                            if (rect.right > wrapperRect.left && rect.left < wrapperRect.right) {
+                            // 如果这个元素的屁股还在当前页面里，那它就是我们要找的头一个
+                            if (elEnd > currentScroll) { 
                                 currentAnchorIndex = i;
                                 break;
                             }
@@ -292,16 +295,11 @@ object EpubParser {
                             // 强行纠偏：找到原来的主角在新舞台的位置
                             const anchorEl = allElements[currentAnchorIndex];
                             if (anchorEl) {
-                                const wrapperRect = wrapper.getBoundingClientRect();
-                                const elRect = anchorEl.getBoundingClientRect();
-
-                                // 计算元素相对于可见区域左边缘的偏移
-                                const offsetFromVisibleLeft = elRect.left - wrapperRect.left;
-                                // 绝对偏移量
-                                const absoluteOffset = wrapper.scrollLeft + offsetFromVisibleLeft;
-
                                 const newWidth = wrapper.clientWidth;
-                                const targetLeft = Math.floor(absoluteOffset / (newWidth || 1)) * newWidth;
+                                // 问浏览器：这个元素现在在哪？
+                                const newOffset = anchorEl.offsetLeft;
+                                // 它是第几页？
+                                const targetLeft = Math.floor(newOffset / (newWidth || 1)) * newWidth;
                                 // 瞬移过去
                                 wrapper.scrollTo(targetLeft, 0);
                             }
@@ -521,18 +519,10 @@ object EpubParser {
                     window.jumpToMatch = function(id) {
                          const el = document.getElementById(id);
                          if(el) {
-                             const wrapperRect = wrapper.getBoundingClientRect();
-                             const elRect = el.getBoundingClientRect();
-
-                             // Calculate offset relative to visible area
-                             const offsetFromVisibleLeft = elRect.left - wrapperRect.left;
-                             // Absolute offset in scrolling container
-                             const absoluteOffset = wrapper.scrollLeft + offsetFromVisibleLeft;
-
                              const w = wrapper.clientWidth;
-                             // Snap to the column
-                             const targetScroll = Math.floor(absoluteOffset / w) * w;
-
+                             const offset = el.offsetLeft;
+                             // Calculate the start of the column/page
+                             const targetScroll = Math.floor(offset / w) * w;
                              wrapper.scrollTo({ left: targetScroll, behavior: 'auto' });
                              
                              // Flash effect (background color)
