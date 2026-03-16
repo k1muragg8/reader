@@ -120,12 +120,12 @@ object EpubParser {
 
                     #reader-wrapper {
                         width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden;
-                        scroll-snap-type: x mandatory; scroll-behavior: smooth; outline: none;
+                        scroll-behavior: smooth; outline: none;
                     }
                     
                     #reader-text {
                         height: 100%; width: 100%; column-fill: auto;
-                        padding-top: 40px; padding-bottom: 40px; box-sizing: border-box;
+                        padding-top: 40px; padding-bottom: 60px; box-sizing: border-box;
                     }
                     
                     #jump-input {
@@ -137,10 +137,30 @@ object EpubParser {
                     
                     .chapter { break-before: column; }
                     .page-content { padding: 0; margin: 0; width: 100%; box-sizing: border-box; }
+                    h1, h2, h3, h4, h5, h6 { break-inside: avoid; break-after: avoid; }
                     p { line-height: 1.6; margin-top: 0; margin-bottom: 0; text-indent: 1.5em; text-align: justify; font-size: var(--font-size); letter-spacing: 0.02em; }
-                    img { max-width: 100%; height: auto; display: block; margin: 20px auto; border-radius: 8px; }
+                    img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 20px auto; border-radius: 8px; break-inside: avoid; }
                     
                     ::-webkit-scrollbar { display: none !important; }
+
+                    #page-footer {
+                        position: fixed;
+                        bottom: 0;
+                        left: 0;
+                        right: 0;
+                        height: 40px;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        font-size: 11px;
+                        color: var(--text);
+                        opacity: 0.6;
+                        font-weight: 500;
+                        font-family: -apple-system, sans-serif;
+                        z-index: 1000;
+                        pointer-events: none;
+                        background: transparent;
+                    }
 
                     #sidebar {
                         position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
@@ -193,11 +213,6 @@ object EpubParser {
                     .search-highlight { background-color: #ffeb3b; color: #000; border-radius: 2px; box-shadow: 0 0 2px rgba(0,0,0,0.2); }
                     .search-match { font-weight: bold; color: var(--icon-stroke); background: rgba(255, 235, 59, 0.3); }
 
-                    /* Snapshot style for smooth horizontal snapping pages */
-                    #reader-text > * {
-                        scroll-snap-align: start;
-                        /* Optional for text nodes within */
-                    }
 
                     /* --- Settings Popover --- */
                     #settings-popover {
@@ -292,10 +307,13 @@ object EpubParser {
                     </div>
                 </div>
                 
+                <div id="page-footer">-- / --</div>
+
                 <script>
                     const wrapper = document.getElementById('reader-wrapper');
                     const textContainer = document.getElementById('reader-text');
                     const pageInfo = document.getElementById('page-info');
+                    const pageFooter = document.getElementById('page-footer');
                     const jumpInput = document.getElementById('jump-input');
                     const sidebar = document.getElementById('sidebar');
                     const backdrop = document.getElementById('sidebar-backdrop');
@@ -384,12 +402,12 @@ object EpubParser {
                         if(w > 0) {
                             textContainer.style.width = 'auto'; 
                             // Set padding inside textContainer
-                            textContainer.style.paddingLeft = '20px';
-                            textContainer.style.paddingRight = '20px';
+                            textContainer.style.paddingLeft = '40px';
+                            textContainer.style.paddingRight = '40px';
                             // The actual usable width for a column is w minus the padding
-                            const usableWidth = w - 40;
+                            const usableWidth = w - 80;
                             textContainer.style.columnWidth = Math.max(usableWidth, 200) + 'px';
-                            textContainer.style.columnGap = '40px';
+                            textContainer.style.columnGap = '80px';
                         }
                     }
 
@@ -405,19 +423,13 @@ object EpubParser {
                     });
 
                     function findCurrentAnchor() {
-                        const currentScroll = wrapper.scrollLeft;
                         const viewWidth = wrapper.clientWidth;
-                        
-                        // 遍历找锚点
-                        // 策略优化：不再只找“开始位置 > scroll”的
-                        // 而是找“结束位置 > scroll”的第一个元素（即当前视野里的第一个元素，哪怕它跨页了）
+                        // 策略：使用 getBoundingClientRect() 准确获取在屏幕中的位置
                         for (let i = 0; i < allElements.length; i++) {
                             const el = allElements[i];
-                            const elStart = el.offsetLeft;
-                            const elEnd = elStart + el.offsetWidth;
-                            
-                            // 如果这个元素的屁股还在当前页面里，那它就是我们要找的头一个
-                            if (elEnd > currentScroll) { 
+                            const rect = el.getBoundingClientRect();
+                            // 如果元素的右边缘大于 0（在屏幕可见区域内或更靠右）
+                            if (rect.right > 0) {
                                 currentAnchorIndex = i;
                                 break;
                             }
@@ -446,10 +458,12 @@ object EpubParser {
                             const anchorEl = allElements[currentAnchorIndex];
                             if (anchorEl) {
                                 const newWidth = wrapper.clientWidth;
-                                // 问浏览器：这个元素现在在哪？
-                                const newOffset = anchorEl.offsetLeft;
-                                // 它是第几页？
-                                const targetLeft = Math.floor(newOffset / (newWidth || 1)) * newWidth;
+                                // 使用 getBoundingClientRect 计算元素当前偏离视口的距离
+                                const rect = anchorEl.getBoundingClientRect();
+                                // 当前的 scrollLeft 加上元素相对于视口的左偏移，得到元素在整个滚动区域的绝对左坐标
+                                const absoluteLeft = wrapper.scrollLeft + rect.left;
+                                // 它应该在哪一页？
+                                const targetLeft = Math.floor(absoluteLeft / (newWidth || 1)) * newWidth;
                                 // 瞬移过去
                                 wrapper.scrollTo(targetLeft, 0);
                             }
@@ -512,7 +526,9 @@ object EpubParser {
                              const total = Math.ceil(scrollW / w) || 1;
                              const maxScroll = scrollW - w;
                              const pct = maxScroll > 0 ? Math.round((wrapper.scrollLeft / maxScroll) * 100) : 0;
-                             if(pageInfo) pageInfo.textContent = current + ' / ' + total + ' (' + pct + '%)';
+                             const text = current + ' / ' + total + ' (' + pct + '%)';
+                             if(pageInfo) pageInfo.textContent = text;
+                             if(pageFooter) pageFooter.textContent = text;
                         }
                     }
                     
@@ -726,9 +742,10 @@ object EpubParser {
                          const el = document.getElementById(id);
                          if(el) {
                              const w = wrapper.clientWidth;
-                             const offset = el.offsetLeft;
+                             const rect = el.getBoundingClientRect();
+                             const absoluteLeft = wrapper.scrollLeft + rect.left;
                              // Calculate the start of the column/page
-                             const targetScroll = Math.floor(offset / w) * w;
+                             const targetScroll = Math.floor(absoluteLeft / w) * w;
                              wrapper.scrollTo({ left: targetScroll, behavior: 'auto' });
                              
                              // Flash effect (background color)
