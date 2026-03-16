@@ -133,9 +133,9 @@ object EpubParser {
                     }
                     
                     #jump-input {
-                        width: 32px; height: 20px; background: transparent; color: var(--text);
+                        width: 50px; height: 24px; background: transparent; color: var(--text);
                         border: 1px solid rgba(128,128,128, 0.4); border-radius: 4px;
-                        text-align: center; font-size: 10px; font-weight: 500; opacity: 0.7;
+                        text-align: center; font-size: 11px; font-weight: 500; opacity: 0.7;
                     }
                     #jump-input:focus { opacity: 1; outline: none; border-color: var(--text); }
                     
