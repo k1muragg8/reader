@@ -28,19 +28,46 @@ object EpubParser {
                 <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data:;">
                 <style>
                     :root {
+                        /* Base System Colors */
                         --bg: ${colors.bg}; --text: ${colors.text};
                         --sidebar-bg: ${colors.sidebarBg};
                         --border: ${colors.border};
                         --icon-stroke: ${colors.text};
                         --hover-bg: ${if (colors.bg.startsWith("#2")) "rgba(255,255,255,0.08)" else "rgba(0,0,0,0.04)"};
                         --font-size: ${fontSize}px;
+                        --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    }
+
+                    /* Theme: White */
+                    :root[data-theme="white"] {
+                        --bg: #ffffff; --text: #000000;
+                        --sidebar-bg: rgba(255, 255, 255, 0.9);
+                        --border: #e0e0e0; --icon-stroke: #000000;
+                        --hover-bg: rgba(0,0,0,0.05);
+                    }
+
+                    /* Theme: Sepia */
+                    :root[data-theme="sepia"] {
+                        --bg: #fbf0d9; --text: #5f4b32;
+                        --sidebar-bg: rgba(251, 240, 217, 0.95);
+                        --border: #e8dcc4; --icon-stroke: #5f4b32;
+                        --hover-bg: rgba(95, 75, 50, 0.08);
+                    }
+
+                    /* Theme: Dark */
+                    :root[data-theme="dark"] {
+                        --bg: #1e1e1e; --text: #d4d4d4;
+                        --sidebar-bg: rgba(30, 30, 30, 0.9);
+                        --border: #333333; --icon-stroke: #d4d4d4;
+                        --hover-bg: rgba(255,255,255,0.1);
                     }
                     
                     body { 
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                        font-family: var(--font-family);
                         margin: 0 !important; padding: 0 !important; width: 100% !important; 
                         max-width: none !important; box-sizing: border-box !important;
                         background-color: var(--bg); color: var(--text); overflow: hidden; 
+                        transition: background-color 0.3s ease, color 0.3s ease;
                     }
                     * { box-sizing: border-box; }
                     
@@ -55,13 +82,15 @@ object EpubParser {
                     /* Removing #toolbar-trigger as we use body hover now */
 
                     #toolbar {
-                        position: fixed; top: 0; left: 0; right: 0; height: 50px; 
-                        background: var(--bg); display: grid; grid-template-columns: 1fr auto 1fr; 
-                        align-items: center; padding: 0 12px; z-index: 1002; user-select: none;
-                        transform: translateY(-100%); transition: transform 0.3s ease;
+                        position: fixed; top: 0; left: 0; right: 0; height: 60px;
+                        background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+                        display: grid; grid-template-columns: 1fr auto 1fr;
+                        align-items: center; padding: 0 16px; z-index: 1002; user-select: none;
+                        transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+                        border-bottom: 0.5px solid var(--border);
                     }
-                    /* Show toolbar when body has 'hovering' class */
-                    body.hovering #toolbar {
+                    /* Show toolbar when body has 'hovering' class or when settings are open */
+                    body.hovering #toolbar, body.settings-open #toolbar {
                         transform: translateY(0);
                     }
                     
@@ -73,28 +102,31 @@ object EpubParser {
                     .toolbar-group:nth-child(3) { justify-self: end; }
 
                     .icon-btn {
-                        width: 28px; height: 28px; background: transparent; border: none; 
-                        padding: 4px; cursor: pointer; display: flex; align-items: center; 
-                        justify-content: center; border-radius: 50%; transition: background 0.2s; opacity: 0.8;
+                        width: 32px; height: 32px; background: transparent; border: none;
+                        padding: 6px; cursor: pointer; display: flex; align-items: center;
+                        justify-content: center; border-radius: 6px; transition: all 0.2s ease; opacity: 0.8;
                     }
                     .icon-btn:hover { opacity: 1; background: var(--hover-bg); }
                     .icon-btn:active { transform: scale(0.95); }
 
-                    .feather { width: 16px; height: 16px; fill: none; stroke: var(--icon-stroke); stroke-width: 2px; }
+                    .feather { width: 20px; height: 20px; fill: none; stroke: var(--icon-stroke); stroke-width: 1.5px; }
 
                     #page-info {
                         font-size: 11px; color: var(--text); opacity: 0.6; margin: 0 8px; 
                         font-weight: 500; font-family: -apple-system, sans-serif; cursor: default; white-space: nowrap;
                     }
                     
-                    #content { position: absolute; top: 5px; bottom: 5px; left: 5px; right: 5px; overflow: hidden; }
+                    #content { position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow: hidden; }
 
                     #reader-wrapper {
                         width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden;
                         scroll-snap-type: x mandatory; scroll-behavior: smooth; outline: none;
                     }
                     
-                    #reader-text { height: 100%; width: 100%; column-fill: auto; }
+                    #reader-text {
+                        height: 100%; width: 100%; column-fill: auto;
+                        padding-top: 40px; padding-bottom: 40px; box-sizing: border-box;
+                    }
                     
                     #jump-input {
                         width: 40px; height: 22px; background: transparent; color: var(--text);
@@ -105,7 +137,7 @@ object EpubParser {
                     
                     .chapter { break-before: column; }
                     .page-content { padding: 0; margin: 0; width: 100%; box-sizing: border-box; }
-                    p { line-height: 1.8; margin-top: 0; margin-bottom: 0; text-indent: 2em; text-align: justify; font-size: var(--font-size); letter-spacing: 0.01em; }
+                    p { line-height: 1.6; margin-top: 0; margin-bottom: 0; text-indent: 1.5em; text-align: justify; font-size: var(--font-size); letter-spacing: 0.02em; }
                     img { max-width: 100%; height: auto; display: block; margin: 20px auto; border-radius: 8px; }
                     
                     ::-webkit-scrollbar { display: none !important; }
@@ -160,6 +192,43 @@ object EpubParser {
                     .search-result-snippet { font-size: 12px; color: var(--text); opacity: 0.7; line-height: 1.4; }
                     .search-highlight { background-color: #ffeb3b; color: #000; border-radius: 2px; box-shadow: 0 0 2px rgba(0,0,0,0.2); }
                     .search-match { font-weight: bold; color: var(--icon-stroke); background: rgba(255, 235, 59, 0.3); }
+
+                    /* Snapshot style for smooth horizontal snapping pages */
+                    #reader-text > * {
+                        scroll-snap-align: start;
+                        /* Optional for text nodes within */
+                    }
+
+                    /* --- Settings Popover --- */
+                    #settings-popover {
+                        position: fixed; top: 65px; right: 20px; width: 260px;
+                        background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+                        border: 0.5px solid var(--border); border-radius: 12px;
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1003;
+                        transform: translateY(-10px); opacity: 0; pointer-events: none;
+                        transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+                        padding: 16px; display: flex; flex-direction: column; gap: 16px;
+                    }
+                    #settings-popover.open {
+                        transform: translateY(0); opacity: 1; pointer-events: auto;
+                    }
+                    .settings-row { display: flex; flex-direction: column; gap: 8px; }
+                    .settings-label { font-size: 12px; font-weight: 600; color: var(--text); opacity: 0.6; text-transform: uppercase; letter-spacing: 0.5px; }
+                    .theme-picker { display: flex; gap: 10px; }
+                    .theme-btn {
+                        flex: 1; height: 36px; border-radius: 18px; border: 1px solid var(--border); cursor: pointer;
+                        display: flex; align-items: center; justify-content: center; font-size: 13px;
+                    }
+                    .theme-btn[data-value="white"] { background: #ffffff; color: #000; }
+                    .theme-btn[data-value="sepia"] { background: #fbf0d9; color: #5f4b32; }
+                    .theme-btn[data-value="dark"] { background: #1e1e1e; color: #d4d4d4; }
+                    .font-picker { display: flex; background: var(--hover-bg); border-radius: 8px; padding: 2px; }
+                    .font-btn {
+                        flex: 1; height: 32px; border: none; background: transparent; color: var(--text);
+                        border-radius: 6px; cursor: pointer; font-size: 13px; transition: background 0.2s;
+                    }
+                    .font-btn.active { background: var(--bg); box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-weight: 500; }
+
                 </style>
             </head>
             <body>
@@ -174,6 +243,25 @@ object EpubParser {
                     </div>
                     <div class="toolbar-group">
                         <button id="btn-search" class="icon-btn" title="搜索"><svg class="feather" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
+                        <button id="btn-settings" class="icon-btn" title="设置"><svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
+                    </div>
+                </div>
+
+                <div id="settings-popover">
+                    <div class="settings-row">
+                        <div class="settings-label">Theme</div>
+                        <div class="theme-picker">
+                            <button class="theme-btn" data-value="white">White</button>
+                            <button class="theme-btn" data-value="sepia">Sepia</button>
+                            <button class="theme-btn" data-value="dark">Dark</button>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-label">Font</div>
+                        <div class="font-picker">
+                            <button class="font-btn active" data-value="sans">Sans-Serif</button>
+                            <button class="font-btn" data-value="serif">Serif</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -214,6 +302,10 @@ object EpubParser {
                     let currentAnchorIndex = 0;
                     let allElements = [];
 
+                    const settingsPopover = document.getElementById('settings-popover');
+                    let wheelTimeout = null;
+                    let lastWheelTime = 0;
+
                     window.onload = () => { 
                          // 缓存所有可能的锚点（包含列表项等）
                          allElements = Array.from(textContainer.querySelectorAll('p, h1, h2, h3, img, li, blockquote'));
@@ -229,6 +321,48 @@ object EpubParser {
                          document.getElementById('btn-open').addEventListener('click', () => { if(window.readerBridge) window.readerBridge.openFile(); });
                          jumpInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') manualJump(); });
                          
+                         document.getElementById('btn-settings').addEventListener('click', (e) => {
+                             e.stopPropagation();
+                             settingsPopover.classList.toggle('open');
+                             if (settingsPopover.classList.contains('open')) {
+                                 document.body.classList.add('settings-open');
+                             } else {
+                                 document.body.classList.remove('settings-open');
+                             }
+                         });
+
+                         document.addEventListener('click', (e) => {
+                             if (!settingsPopover.contains(e.target) && !document.getElementById('btn-settings').contains(e.target)) {
+                                 settingsPopover.classList.remove('open');
+                                 document.body.classList.remove('settings-open');
+                             }
+                         });
+
+                         // Theme Buttons
+                         document.querySelectorAll('.theme-btn').forEach(btn => {
+                             btn.addEventListener('click', () => {
+                                 const theme = btn.dataset.value;
+                                 document.documentElement.setAttribute('data-theme', theme);
+                                 if (window.readerBridge) window.readerBridge.saveTheme(theme);
+                             });
+                         });
+
+                         // Font Family Buttons
+                         document.querySelectorAll('.font-btn').forEach(btn => {
+                             btn.addEventListener('click', () => {
+                                 document.querySelectorAll('.font-btn').forEach(b => b.classList.remove('active'));
+                                 btn.classList.add('active');
+                                 const family = btn.dataset.value;
+                                 if (family === 'serif') {
+                                     document.documentElement.style.setProperty('--font-family', 'Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif');
+                                 } else {
+                                     document.documentElement.style.setProperty('--font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif');
+                                 }
+                                 if (window.readerBridge) window.readerBridge.saveFontFamily(family);
+                                 setTimeout(findCurrentAnchor, 100);
+                             });
+                         });
+
                          // Window Hover Logic for Toolbar
                          document.documentElement.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
                          document.documentElement.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
@@ -393,8 +527,57 @@ object EpubParser {
                           else if (lowerK === 'a') navPrev();
                      });
                     
-                    // wrapper.addEventListener('wheel', (e) => { e.deltaY > 0 ? navNext() : navPrev(); }, { passive: true });
+                    // Debounced Wheel/Trackpad Scrolling
+                    wrapper.addEventListener('wheel', (e) => {
+                         // Only intercept if we are dealing with pure horizontal scrolling (like trackpads)
+                         // OR if someone explicitly enabled vertical scrolling to turn pages
+                         if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                             // Let native trackpad horizontal scrolling happen (it's silky smooth)
+                             return;
+                         }
+
+                         // Block vertical mouse wheel events to prevent wild scrolling, convert to page turns
+                         e.preventDefault();
+
+                         const now = Date.now();
+                         if (now - lastWheelTime > 300) { // Debounce threshold (Apple Books style)
+                             if (e.deltaY > 0) {
+                                 navNext();
+                             } else if (e.deltaY < 0) {
+                                 navPrev();
+                             }
+                             lastWheelTime = now;
+                         }
+                    }, { passive: false });
+
                     window.readerNext = navNext; window.readerPrev = navPrev;
+
+                    window.readerZoomIn = function() {
+                        const root = document.documentElement;
+                        const currentSize = parseInt(getComputedStyle(root).getPropertyValue('--font-size')) || 16;
+                        root.style.setProperty('--font-size', (currentSize + 2) + 'px');
+                        setTimeout(() => { updateLayout(); findCurrentAnchor(); }, 100);
+                    };
+
+                    window.readerZoomOut = function() {
+                        const root = document.documentElement;
+                        const currentSize = parseInt(getComputedStyle(root).getPropertyValue('--font-size')) || 16;
+                        if(currentSize > 10) {
+                            root.style.setProperty('--font-size', (currentSize - 2) + 'px');
+                            setTimeout(() => { updateLayout(); findCurrentAnchor(); }, 100);
+                        }
+                    };
+
+                    window.readerRestoreTheme = function(t) {
+                        if (t) document.documentElement.setAttribute('data-theme', t);
+                    };
+
+                    window.readerRestoreFontFamily = function(f) {
+                        if (f) {
+                            const btn = document.querySelector(`.font-btn[data-value="${'$'}{f}"]`);
+                            if (btn) btn.click();
+                        }
+                    };
                     // --- Search Logic ---
                     const searchSidebar = document.getElementById('search-sidebar');
                     const searchInput = document.getElementById('search-input');
