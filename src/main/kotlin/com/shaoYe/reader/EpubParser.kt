@@ -117,18 +117,19 @@ object EpubParser {
                         font-weight: 500; font-family: -apple-system, sans-serif; cursor: default; white-space: nowrap;
                     }
                     
-                    /* 留出24px给底部页码，让内容绝对不会重叠 */
-                    #content { position: absolute; top: 0; bottom: 24px; left: 0; right: 0; overflow: hidden; }
+                    /* 留出16px给底部页码，让内容绝对不会重叠，边距极窄 */
+                    #content { position: absolute; top: 0; bottom: 16px; left: 0; right: 0; overflow: hidden; }
 
                     #reader-wrapper {
-                        width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden;
+                        width: 100%; height: 100%; overflow-x: hidden; overflow-y: hidden;
                         scroll-behavior: smooth; outline: none;
+                        user-select: none; /* Prevent accidental text drag when trying to pan */
                     }
                     
-                    /* 四周保持紧凑、统一的边距 (16px) */
+                    /* 四周保持极其紧凑的边距 (4px) 几乎挨着边框 */
                     #reader-text {
                         height: 100%; width: 100%; column-fill: auto;
-                        padding-top: 16px; padding-bottom: 16px; box-sizing: border-box;
+                        padding-top: 4px; padding-bottom: 4px; box-sizing: border-box;
                     }
                     
                     #jump-input {
@@ -151,7 +152,7 @@ object EpubParser {
                         bottom: 0;
                         left: 0;
                         right: 0;
-                        height: 24px;
+                        height: 16px;
                         display: flex;
                         justify-content: center;
                         align-items: center;
@@ -406,12 +407,12 @@ object EpubParser {
                         if(w > 0) {
                             textContainer.style.width = 'auto'; 
                             // Set padding inside textContainer
-                            textContainer.style.paddingLeft = '16px';
-                            textContainer.style.paddingRight = '16px';
-                            // The actual usable width for a column is w minus the padding (16*2)
-                            const usableWidth = w - 32;
-                            textContainer.style.columnWidth = Math.max(usableWidth, 1) + 'px';
-                            textContainer.style.columnGap = '32px';
+                            textContainer.style.paddingLeft = '4px';
+                            textContainer.style.paddingRight = '4px';
+                            // The actual usable width for a column is w minus the padding (4*2 = 8)
+                            const usableWidth = w - 8;
+                            textContainer.style.columnWidth = Math.max(usableWidth, 20) + 'px';
+                            textContainer.style.columnGap = '8px';
                         }
                     }
 
@@ -570,23 +571,17 @@ object EpubParser {
                           }
                      });
                     
-                    // Debounced Wheel/Trackpad Scrolling
+                    // Wheel Scrolling (Strictly translate vertical scroll wheel to page turns)
                     wrapper.addEventListener('wheel', (e) => {
-                         // Only intercept if we are dealing with pure horizontal scrolling (like trackpads)
-                         // OR if someone explicitly enabled vertical scrolling to turn pages
-                         if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-                             // Let native trackpad horizontal scrolling happen (it's silky smooth)
-                             return;
-                         }
-
-                         // Block vertical mouse wheel events to prevent wild scrolling, convert to page turns
+                         // Prevent native scrolling completely for strict pagination control
                          e.preventDefault();
 
                          const now = Date.now();
-                         if (now - lastWheelTime > 300) { // Debounce threshold (Apple Books style)
-                             if (e.deltaY > 0) {
+                         if (now - lastWheelTime > 300) { // Debounce threshold
+                             // Prefer deltaY (mouse wheel), fallback to deltaX (trackpad swipe)
+                             if (e.deltaY > 0 || e.deltaX > 0) {
                                  navNext();
-                             } else if (e.deltaY < 0) {
+                             } else if (e.deltaY < 0 || e.deltaX < 0) {
                                  navPrev();
                              }
                              lastWheelTime = now;
