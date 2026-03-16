@@ -797,7 +797,19 @@ object EpubParser {
     fun getWelcomeHtml(isDarcula: Boolean, fontSize: Int): String {
         val colors = if (isDarcula) ThemeColors("#2b2d30", "#aaa", "rgba(43, 45, 48, 0.9)", "#4e5254", "#4c5052")
         else ThemeColors("#fff", "#333", "rgba(255, 255, 255, 0.9)", "#ddd", "#eee")
-        return getAppHtml(emptyList(), "<div style='display:flex;height:100%;justify-content:center;align-items:center;opacity:0.5;'><h2>Click ? to Open</h2></div>", colors, fontSize)
+        val welcomeContent = """
+            <div style='display:flex;flex-direction:column;height:100%;justify-content:center;align-items:center;opacity:0.6;text-align:center;padding:20px;gap:20px;'>
+                <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; fill: none; stroke: currentColor; stroke-width: 1.5px;">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <div style="font-size: 16px; line-height: 1.8;">
+                    <div>Click the folder icon above to open an EPUB book</div>
+                    <div style="font-size: 14px; margin-top: 8px;">点击顶部的文件夹图标打开 EPUB 书籍</div>
+                    <div style="font-size: 14px; margin-top: 8px;">上部のフォルダアイコンをクリックしてEPUBブックを開きます</div>
+                </div>
+            </div>
+        """.trimIndent()
+        return getAppHtml(emptyList(), welcomeContent, colors, fontSize)
     }
 
     private fun getMimeType(href: String): String? {
