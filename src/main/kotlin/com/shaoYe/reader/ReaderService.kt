@@ -29,10 +29,14 @@ class ReaderService(private val project: Project) {
     // JS Queries
     private var openFileQuery: JBCefJSQuery? = null
     private var saveProgressQuery: JBCefJSQuery? = null
+    private var saveThemeQuery: JBCefJSQuery? = null
+    private var saveFontFamilyQuery: JBCefJSQuery? = null
 
     companion object {
         private const val KEY_LAST_PATH = "READER_MASTER_LAST_PATH"
         private const val KEY_LAST_PROGRESS = "READER_MASTER_LAST_PROGRESS"
+        private const val KEY_LAST_THEME = "READER_MASTER_LAST_THEME"
+        private const val KEY_LAST_FONT_FAMILY = "READER_MASTER_LAST_FONT_FAMILY"
 
         fun getInstance(project: Project): ReaderService {
             return project.getService(ReaderService::class.java)
@@ -53,6 +57,22 @@ class ReaderService(private val project: Project) {
         saveProgressQuery?.addHandler { progressStr ->
             try {
                 PropertiesComponent.getInstance(project).setValue(KEY_LAST_PROGRESS, progressStr)
+            } catch (e: Exception) {}
+            JBCefJSQuery.Response("OK")
+        }
+
+        saveThemeQuery = JBCefJSQuery.create(jbCefBrowser as JBCefBrowserBase)
+        saveThemeQuery?.addHandler { themeStr ->
+            try {
+                PropertiesComponent.getInstance(project).setValue(KEY_LAST_THEME, themeStr)
+            } catch (e: Exception) {}
+            JBCefJSQuery.Response("OK")
+        }
+
+        saveFontFamilyQuery = JBCefJSQuery.create(jbCefBrowser as JBCefBrowserBase)
+        saveFontFamilyQuery?.addHandler { fontStr ->
+            try {
+                PropertiesComponent.getInstance(project).setValue(KEY_LAST_FONT_FAMILY, fontStr)
             } catch (e: Exception) {}
             JBCefJSQuery.Response("OK")
         }
@@ -99,7 +119,9 @@ class ReaderService(private val project: Project) {
         val js = """
             window.readerBridge = {
                 openFile: function() { ${openFileQuery?.inject("''")} },
-                saveProgress: function(val) { ${saveProgressQuery?.inject("val")} }
+                saveProgress: function(val) { ${saveProgressQuery?.inject("val")} },
+                saveTheme: function(val) { ${saveThemeQuery?.inject("val")} },
+                saveFontFamily: function(val) { ${saveFontFamilyQuery?.inject("val")} }
             };
         """.trimIndent()
         // 修复：既然 browser 已校验不为空，此处不再使用冗余的 ? 号
@@ -108,9 +130,24 @@ class ReaderService(private val project: Project) {
 
     private fun restoreProgress(browser: CefBrowser?) {
         if (browser == null) return
-        val lastProgress = PropertiesComponent.getInstance(project).getValue(KEY_LAST_PROGRESS)
+        val props = PropertiesComponent.getInstance(project)
+        val lastProgress = props.getValue(KEY_LAST_PROGRESS)
+        val lastTheme = props.getValue(KEY_LAST_THEME)
+        val lastFont = props.getValue(KEY_LAST_FONT_FAMILY)
+
+        val jsBuilder = StringBuilder()
         if (!lastProgress.isNullOrEmpty()) {
-            browser.executeJavaScript("if(window.readerRestore) window.readerRestore('$lastProgress');", browser.url, 0)
+            jsBuilder.append("if(window.readerRestore) window.readerRestore('$lastProgress');\n")
+        }
+        if (!lastTheme.isNullOrEmpty()) {
+            jsBuilder.append("if(window.readerRestoreTheme) window.readerRestoreTheme('$lastTheme');\n")
+        }
+        if (!lastFont.isNullOrEmpty()) {
+            jsBuilder.append("if(window.readerRestoreFontFamily) window.readerRestoreFontFamily('$lastFont');\n")
+        }
+
+        if (jsBuilder.isNotEmpty()) {
+            browser.executeJavaScript(jsBuilder.toString(), browser.url, 0)
         }
     }
 
