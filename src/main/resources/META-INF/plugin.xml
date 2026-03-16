@@ -41,10 +41,15 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <h3>Version 1.2.0 - Layout and UX Overhaul</h3>
     <ul>
-        <li><b>Improvement</b>: Removed mouse wheel scrolling to prevent accidental page turns.</li>
-        <li><b>UI Fix</b>: Removed the shadow from the auto-hiding top toolbar for a cleaner look.</li>
-        <li><b>Refinement</b>: Optimized event handling for smoother navigation.</li>
+        <li><b>Layout Polish</b>: Completely overhauled multi-column margins. Margins are now flawlessly uniform, ultra-narrow (4px), and push right up against the window edge to maximize reading space.</li>
+        <li><b>Narrow Window Support</b>: Drastically improved the reading experience in extremely thin IDE sidebars (single-character columns). Text will now perfectly wrap and break without horizontally overflowing or blanking out.</li>
+        <li><b>Keyboard Navigation Fix</b>: Globally mapped the A/D and Left/Right Arrow keys to guarantee seamless page-turning regardless of UI focus issues.</li>
+        <li><b>Scroll Locking</b>: Disabled messy native trackpad dragging and mouse scrolling. Replaced with strict page-by-page turning via mouse wheel for a pristine reading experience.</li>
+        <li><b>Search & Resize Precision</b>: Replaced a flawed offset calculation with highly accurate <code>getBoundingClientRect()</code> logic. Jumping to search results and resizing the window is now completely accurate across chapters.</li>
+        <li><b>Toolbar Compaction</b>: Significantly shrunk the top hover toolbar (height, icons, and text) to occupy minimal vertical space when summoned.</li>
+        <li><b>Footer Removal</b>: Removed the bottom page number tracker that occasionally overlapped text in tight viewports.</li>
     </ul>
     ]]></change-notes>
     <depends>com.intellij.modules.platform</depends>
