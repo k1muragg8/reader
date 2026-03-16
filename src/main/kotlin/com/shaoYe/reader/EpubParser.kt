@@ -117,8 +117,8 @@ object EpubParser {
                         font-weight: 500; font-family: -apple-system, sans-serif; cursor: default; white-space: nowrap;
                     }
                     
-                    /* 极致紧贴边框 */
-                    #content { position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow: hidden; }
+                    /* 极致紧贴边框，由外层容器强制给出 4px 留白，防止内容和滚动条相互影响 */
+                    #content { position: absolute; top: 4px; bottom: 4px; left: 0; right: 0; overflow: hidden; }
 
                     #reader-wrapper {
                         width: 100%; height: 100%; overflow-x: hidden; overflow-y: hidden;
@@ -126,10 +126,10 @@ object EpubParser {
                         user-select: none; /* Prevent accidental text drag when trying to pan */
                     }
                     
-                    /* 四周保持极其紧凑的边距 (4px) 几乎挨着边框 */
+                    /* 去掉内层的高度影响，保证文字直接顶满整个内部高度 */
                     #reader-text {
                         height: 100%; width: 100%; column-fill: auto;
-                        padding-top: 4px; padding-bottom: 4px; box-sizing: border-box;
+                        padding-top: 0; padding-bottom: 0; box-sizing: border-box;
                     }
                     
                     #jump-input {
