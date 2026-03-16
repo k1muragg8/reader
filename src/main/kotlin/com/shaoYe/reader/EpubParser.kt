@@ -68,6 +68,7 @@ object EpubParser {
                         max-width: none !important; box-sizing: border-box !important;
                         background-color: var(--bg); color: var(--text); overflow: hidden; 
                         transition: background-color 0.3s ease, color 0.3s ease;
+                        overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;
                     }
                     * { box-sizing: border-box; }
                     
@@ -116,16 +117,18 @@ object EpubParser {
                         font-weight: 500; font-family: -apple-system, sans-serif; cursor: default; white-space: nowrap;
                     }
                     
-                    #content { position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow: hidden; }
+                    /* 留出24px给底部页码，让内容绝对不会重叠 */
+                    #content { position: absolute; top: 0; bottom: 24px; left: 0; right: 0; overflow: hidden; }
 
                     #reader-wrapper {
                         width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden;
                         scroll-behavior: smooth; outline: none;
                     }
                     
+                    /* 四周保持紧凑、统一的边距 (16px) */
                     #reader-text {
                         height: 100%; width: 100%; column-fill: auto;
-                        padding-top: 40px; padding-bottom: 60px; box-sizing: border-box;
+                        padding-top: 16px; padding-bottom: 16px; box-sizing: border-box;
                     }
                     
                     #jump-input {
@@ -148,11 +151,11 @@ object EpubParser {
                         bottom: 0;
                         left: 0;
                         right: 0;
-                        height: 40px;
+                        height: 24px;
                         display: flex;
                         justify-content: center;
                         align-items: center;
-                        font-size: 11px;
+                        font-size: 10px;
                         color: var(--text);
                         opacity: 0.6;
                         font-weight: 500;
@@ -160,6 +163,7 @@ object EpubParser {
                         z-index: 1000;
                         pointer-events: none;
                         background: transparent;
+                        border-top: 0.5px solid rgba(128,128,128,0.1);
                     }
 
                     #sidebar {
@@ -402,12 +406,12 @@ object EpubParser {
                         if(w > 0) {
                             textContainer.style.width = 'auto'; 
                             // Set padding inside textContainer
-                            textContainer.style.paddingLeft = '40px';
-                            textContainer.style.paddingRight = '40px';
-                            // The actual usable width for a column is w minus the padding
-                            const usableWidth = w - 80;
-                            textContainer.style.columnWidth = Math.max(usableWidth, 200) + 'px';
-                            textContainer.style.columnGap = '80px';
+                            textContainer.style.paddingLeft = '16px';
+                            textContainer.style.paddingRight = '16px';
+                            // The actual usable width for a column is w minus the padding (16*2)
+                            const usableWidth = w - 32;
+                            textContainer.style.columnWidth = Math.max(usableWidth, 1) + 'px';
+                            textContainer.style.columnGap = '32px';
                         }
                     }
 
