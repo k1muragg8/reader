@@ -76,7 +76,6 @@ object EpubParser {
                     .resizing, .resizing * {
                         transition: none !important;
                         scroll-behavior: auto !important;
-                        scroll-snap-type: none !important;
                     }
 
                     /* Removing #toolbar-trigger as we use body hover now */
@@ -120,7 +119,7 @@ object EpubParser {
 
                     #reader-wrapper {
                         width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden;
-                        scroll-snap-type: x mandatory; scroll-behavior: smooth; outline: none;
+                        scroll-behavior: smooth; outline: none;
                     }
                     
                     #reader-text {
@@ -193,11 +192,6 @@ object EpubParser {
                     .search-highlight { background-color: #ffeb3b; color: #000; border-radius: 2px; box-shadow: 0 0 2px rgba(0,0,0,0.2); }
                     .search-match { font-weight: bold; color: var(--icon-stroke); background: rgba(255, 235, 59, 0.3); }
 
-                    /* Snapshot style for smooth horizontal snapping pages */
-                    #reader-text > * {
-                        scroll-snap-align: start;
-                        /* Optional for text nodes within */
-                    }
 
                     /* --- Settings Popover --- */
                     #settings-popover {
@@ -381,15 +375,25 @@ object EpubParser {
 
                     function updateLayout(width) {
                         const w = width || wrapper.clientWidth;
-                        if(w > 0) {
-                            textContainer.style.width = 'auto'; 
-                            // Set padding inside textContainer
-                            textContainer.style.paddingLeft = '20px';
-                            textContainer.style.paddingRight = '20px';
-                            // The actual usable width for a column is w minus the padding
-                            const usableWidth = w - 40;
-                            textContainer.style.columnWidth = Math.max(usableWidth, 200) + 'px';
-                            textContainer.style.columnGap = '40px';
+                        const h = wrapper.clientHeight || window.innerHeight;
+                        if (w > 0 && h > 0) {
+                            textContainer.style.width = 'auto';
+
+                            // Dynamic padding based on window size to prevent overlapping or crash
+                            // If window is too small, reduce padding to 0
+                            const hPad = w < 100 ? 0 : 20;
+                            const vPad = h < 100 ? 0 : 40;
+
+                            textContainer.style.paddingLeft = hPad + 'px';
+                            textContainer.style.paddingRight = hPad + 'px';
+                            textContainer.style.paddingTop = vPad + 'px';
+                            textContainer.style.paddingBottom = vPad + 'px';
+
+                            // The actual usable width for a column is w minus the horizontal padding
+                            const usableWidth = w - (hPad * 2);
+                            // Ensure column width never goes below a safe minimum, otherwise layout breaks
+                            textContainer.style.columnWidth = Math.max(usableWidth, 50) + 'px';
+                            textContainer.style.columnGap = (hPad * 2) + 'px';
                         }
                     }
 
@@ -539,7 +543,7 @@ object EpubParser {
 
                           const k = e.key;
                           const lowerK = k.toLowerCase();
-                          
+
                           // Map A/D and Arrow Keys to Pagination
                           if (lowerK === 'a' || k === 'ArrowLeft') {
                               e.preventDefault();
@@ -726,9 +730,15 @@ object EpubParser {
                          const el = document.getElementById(id);
                          if(el) {
                              const w = wrapper.clientWidth;
-                             const offset = el.offsetLeft;
+
+                             // To find the element in a multi-column layout, getBoundingClientRect() is much more reliable
+                             // than offsetLeft because it accounts for the actual visual position after column flow.
+                             // We add the current scrollLeft to the relative client rect left.
+                             const rect = el.getBoundingClientRect();
+                             const absoluteLeft = rect.left + wrapper.scrollLeft;
+
                              // Calculate the start of the column/page
-                             const targetScroll = Math.floor(offset / w) * w;
+                             const targetScroll = Math.floor(absoluteLeft / w) * w;
                              wrapper.scrollTo({ left: targetScroll, behavior: 'auto' });
                              
                              // Flash effect (background color)
