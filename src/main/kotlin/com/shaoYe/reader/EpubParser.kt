@@ -117,8 +117,8 @@ object EpubParser {
                         font-weight: 500; font-family: -apple-system, sans-serif; cursor: default; white-space: nowrap;
                     }
                     
-                    /* 留出16px给底部页码，让内容绝对不会重叠，边距极窄 */
-                    #content { position: absolute; top: 0; bottom: 16px; left: 0; right: 0; overflow: hidden; }
+                    /* 极致紧贴边框 */
+                    #content { position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow: hidden; }
 
                     #reader-wrapper {
                         width: 100%; height: 100%; overflow-x: hidden; overflow-y: hidden;
@@ -146,26 +146,6 @@ object EpubParser {
                     img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 20px auto; border-radius: 8px; break-inside: avoid; }
                     
                     ::-webkit-scrollbar { display: none !important; }
-
-                    #page-footer {
-                        position: fixed;
-                        bottom: 0;
-                        left: 0;
-                        right: 0;
-                        height: 16px;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        font-size: 10px;
-                        color: var(--text);
-                        opacity: 0.6;
-                        font-weight: 500;
-                        font-family: -apple-system, sans-serif;
-                        z-index: 1000;
-                        pointer-events: none;
-                        background: transparent;
-                        border-top: 0.5px solid rgba(128,128,128,0.1);
-                    }
 
                     #sidebar {
                         position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
@@ -312,13 +292,10 @@ object EpubParser {
                     </div>
                 </div>
                 
-                <div id="page-footer">-- / --</div>
-
                 <script>
                     const wrapper = document.getElementById('reader-wrapper');
                     const textContainer = document.getElementById('reader-text');
                     const pageInfo = document.getElementById('page-info');
-                    const pageFooter = document.getElementById('page-footer');
                     const jumpInput = document.getElementById('jump-input');
                     const sidebar = document.getElementById('sidebar');
                     const backdrop = document.getElementById('sidebar-backdrop');
@@ -533,7 +510,6 @@ object EpubParser {
                              const pct = maxScroll > 0 ? Math.round((wrapper.scrollLeft / maxScroll) * 100) : 0;
                              const text = current + ' / ' + total + ' (' + pct + '%)';
                              if(pageInfo) pageInfo.textContent = text;
-                             if(pageFooter) pageFooter.textContent = text;
                         }
                     }
                     
