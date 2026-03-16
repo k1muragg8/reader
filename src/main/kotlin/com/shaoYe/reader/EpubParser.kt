@@ -64,10 +64,11 @@ object EpubParser {
                     
                     body { 
                         font-family: var(--font-family);
-                        margin: 0 !important; padding: 0 !important; width: 100% !important; 
+                        margin: 0 !important; padding: 0 !important; width: 100% !important; height: 100vh !important;
                         max-width: none !important; box-sizing: border-box !important;
                         background-color: var(--bg); color: var(--text); overflow: hidden; 
                         transition: background-color 0.3s ease, color 0.3s ease;
+                        display: flex; flex-direction: column;
                     }
                     * { box-sizing: border-box; }
                     
@@ -78,23 +79,14 @@ object EpubParser {
                         scroll-behavior: auto !important;
                     }
 
-                    /* Removing #toolbar-trigger as we use body hover now */
-
                     #toolbar {
-                        position: fixed; top: 0; left: 0; right: 0; height: 60px;
+                        flex-shrink: 0; width: 100%; height: 50px;
                         background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                         display: grid; grid-template-columns: 1fr auto 1fr;
                         align-items: center; padding: 0 16px; z-index: 1002; user-select: none;
-                        transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
                         border-bottom: 0.5px solid var(--border);
                     }
-                    /* Show toolbar when body has 'hovering' class or when settings are open */
-                    body.hovering #toolbar, body.settings-open #toolbar {
-                        transform: translateY(0);
-                    }
                     
-                    /* Sidebar z-index adjustment if needed, but 9999 is fine */
-
                     .toolbar-group { display: flex; align-items: center; gap: 8px; }
                     .toolbar-group:nth-child(1) { justify-self: start; }
                     .toolbar-group:nth-child(2) { justify-self: center; }
@@ -115,10 +107,10 @@ object EpubParser {
                         font-weight: 500; font-family: -apple-system, sans-serif; cursor: default; white-space: nowrap;
                     }
                     
-                    #content { position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow: hidden; }
+                    #content { flex: 1; position: relative; width: 100%; overflow: hidden; }
 
                     #reader-wrapper {
-                        width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden;
+                        position: absolute; inset: 0; overflow-x: scroll; overflow-y: hidden;
                         scroll-behavior: smooth; outline: none;
                     }
                     
@@ -137,7 +129,7 @@ object EpubParser {
                     .chapter { break-before: column; }
                     .page-content { padding: 0; margin: 0; width: 100%; box-sizing: border-box; }
                     p { line-height: 1.6; margin-top: 0; margin-bottom: 0; text-indent: 1.5em; text-align: justify; font-size: var(--font-size); letter-spacing: 0.02em; }
-                    img { max-width: 100%; height: auto; display: block; margin: 20px auto; border-radius: 8px; }
+                    img { max-width: 100%; max-height: 90vh; object-fit: contain; display: block; margin: 20px auto; border-radius: 8px; }
                     
                     ::-webkit-scrollbar { display: none !important; }
 
@@ -368,9 +360,8 @@ object EpubParser {
                          document.getElementById('btn-zoom-in').addEventListener('click', window.readerZoomIn);
                          document.getElementById('btn-zoom-out').addEventListener('click', window.readerZoomOut);
 
-                         // Window Hover Logic for Toolbar
-                         document.documentElement.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
-                         document.documentElement.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
+                         // 修复 A/D 键无法点击的问题：强制点击 wrapper 获取焦点
+                         wrapper.addEventListener('click', () => wrapper.focus());
                     };
 
                     function updateLayout(width) {
@@ -379,21 +370,19 @@ object EpubParser {
                         if (w > 0 && h > 0) {
                             textContainer.style.width = 'auto';
 
-                            // Dynamic padding based on window size to prevent overlapping or crash
-                            // If window is too small, reduce padding to 0
-                            const hPad = w < 100 ? 0 : 20;
-                            const vPad = h < 100 ? 0 : 40;
+                            // 动态调整 padding，保证上下左右一样大，并且极小窗口不崩溃
+                            const pad = (w < 100 || h < 100) ? 0 : 40;
 
-                            textContainer.style.paddingLeft = hPad + 'px';
-                            textContainer.style.paddingRight = hPad + 'px';
-                            textContainer.style.paddingTop = vPad + 'px';
-                            textContainer.style.paddingBottom = vPad + 'px';
+                            textContainer.style.paddingLeft = pad + 'px';
+                            textContainer.style.paddingRight = pad + 'px';
+                            textContainer.style.paddingTop = pad + 'px';
+                            textContainer.style.paddingBottom = pad + 'px';
 
                             // The actual usable width for a column is w minus the horizontal padding
-                            const usableWidth = w - (hPad * 2);
+                            const usableWidth = w - (pad * 2);
                             // Ensure column width never goes below a safe minimum, otherwise layout breaks
                             textContainer.style.columnWidth = Math.max(usableWidth, 50) + 'px';
-                            textContainer.style.columnGap = (hPad * 2) + 'px';
+                            textContainer.style.columnGap = (pad * 2) + 'px';
                         }
                     }
 
