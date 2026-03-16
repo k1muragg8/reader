@@ -83,10 +83,10 @@ object EpubParser {
                     /* Removing #toolbar-trigger as we use body hover now */
 
                     #toolbar {
-                        position: fixed; top: 0; left: 0; right: 0; height: 60px;
+                        position: fixed; top: 0; left: 0; right: 0; height: 36px;
                         background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                         display: grid; grid-template-columns: 1fr auto 1fr;
-                        align-items: center; padding: 0 16px; z-index: 1002; user-select: none;
+                        align-items: center; padding: 0 8px; z-index: 1002; user-select: none;
                         transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
                         border-bottom: 0.5px solid var(--border);
                     }
@@ -97,23 +97,23 @@ object EpubParser {
                     
                     /* Sidebar z-index adjustment if needed, but 9999 is fine */
 
-                    .toolbar-group { display: flex; align-items: center; gap: 8px; }
+                    .toolbar-group { display: flex; align-items: center; gap: 4px; }
                     .toolbar-group:nth-child(1) { justify-self: start; }
                     .toolbar-group:nth-child(2) { justify-self: center; }
                     .toolbar-group:nth-child(3) { justify-self: end; }
 
                     .icon-btn {
-                        width: 32px; height: 32px; background: transparent; border: none;
-                        padding: 6px; cursor: pointer; display: flex; align-items: center;
-                        justify-content: center; border-radius: 6px; transition: all 0.2s ease; opacity: 0.8;
+                        width: 24px; height: 24px; background: transparent; border: none;
+                        padding: 4px; cursor: pointer; display: flex; align-items: center;
+                        justify-content: center; border-radius: 4px; transition: all 0.2s ease; opacity: 0.8;
                     }
                     .icon-btn:hover { opacity: 1; background: var(--hover-bg); }
                     .icon-btn:active { transform: scale(0.95); }
 
-                    .feather { width: 20px; height: 20px; fill: none; stroke: var(--icon-stroke); stroke-width: 1.5px; }
+                    .feather { width: 16px; height: 16px; fill: none; stroke: var(--icon-stroke); stroke-width: 1.5px; }
 
                     #page-info {
-                        font-size: 11px; color: var(--text); opacity: 0.6; margin: 0 8px; 
+                        font-size: 10px; color: var(--text); opacity: 0.6; margin: 0 4px;
                         font-weight: 500; font-family: -apple-system, sans-serif; cursor: default; white-space: nowrap;
                     }
                     
@@ -133,9 +133,9 @@ object EpubParser {
                     }
                     
                     #jump-input {
-                        width: 40px; height: 22px; background: transparent; color: var(--text);
-                        border: 1px solid rgba(128,128,128, 0.4); border-radius: 6px;
-                        text-align: center; font-size: 11px; font-weight: 500; opacity: 0.7;
+                        width: 32px; height: 20px; background: transparent; color: var(--text);
+                        border: 1px solid rgba(128,128,128, 0.4); border-radius: 4px;
+                        text-align: center; font-size: 10px; font-weight: 500; opacity: 0.7;
                     }
                     #jump-input:focus { opacity: 1; outline: none; border-color: var(--text); }
                     
@@ -201,7 +201,7 @@ object EpubParser {
 
                     /* --- Settings Popover --- */
                     #settings-popover {
-                        position: fixed; top: 65px; right: 20px; width: 260px;
+                        position: fixed; top: 42px; right: 12px; width: 260px;
                         background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                         border: 0.5px solid var(--border); border-radius: 12px;
                         box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1003;
