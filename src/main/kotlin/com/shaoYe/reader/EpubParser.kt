@@ -257,10 +257,17 @@ object EpubParser {
                         </div>
                     </div>
                     <div class="settings-row">
-                        <div class="settings-label">Font</div>
+                        <div class="settings-label">Font Family</div>
                         <div class="font-picker">
                             <button class="font-btn active" data-value="sans">Sans-Serif</button>
                             <button class="font-btn" data-value="serif">Serif</button>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-label">Font Size</div>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="btn-zoom-out" class="theme-btn" style="background: var(--hover-bg); border: none; color: var(--text);">A-</button>
+                            <button id="btn-zoom-in" class="theme-btn" style="background: var(--hover-bg); border: none; color: var(--text);">A+</button>
                         </div>
                     </div>
                 </div>
@@ -363,6 +370,10 @@ object EpubParser {
                              });
                          });
 
+                         // Zoom Controls from settings
+                         document.getElementById('btn-zoom-in').addEventListener('click', window.readerZoomIn);
+                         document.getElementById('btn-zoom-out').addEventListener('click', window.readerZoomOut);
+
                          // Window Hover Logic for Toolbar
                          document.documentElement.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
                          document.documentElement.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
@@ -372,8 +383,13 @@ object EpubParser {
                         const w = width || wrapper.clientWidth;
                         if(w > 0) {
                             textContainer.style.width = 'auto'; 
-                            textContainer.style.columnWidth = w + 'px';
-                            textContainer.style.columnGap = '0px';
+                            // Set padding inside textContainer
+                            textContainer.style.paddingLeft = '20px';
+                            textContainer.style.paddingRight = '20px';
+                            // The actual usable width for a column is w minus the padding
+                            const usableWidth = w - 40;
+                            textContainer.style.columnWidth = Math.max(usableWidth, 200) + 'px';
+                            textContainer.style.columnGap = '40px';
                         }
                     }
 
@@ -512,19 +528,26 @@ object EpubParser {
                     };
 
                      document.addEventListener('keydown', function(e) {
-                          const k = e.key; // Use case-sensitive key first
-                          if (document.activeElement === jumpInput && k !== 'Enter') return;
-                          
-                          // 禁用默认的左右方向键滚动
-                          if (k === 'ArrowLeft' || k === 'ArrowRight') {
-                              e.preventDefault();
-                              return; 
+                          // Prevent A/D/Arrows when typing in inputs
+                          if (document.activeElement &&
+                             (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                              if (e.key === 'Enter' && document.activeElement === jumpInput) {
+                                  // Handled elsewhere
+                              }
+                              return;
                           }
- 
-                          // Old generic handlers
+
+                          const k = e.key;
                           const lowerK = k.toLowerCase();
-                          if (lowerK === 'd') navNext();
-                          else if (lowerK === 'a') navPrev();
+                          
+                          // Map A/D and Arrow Keys to Pagination
+                          if (lowerK === 'a' || k === 'ArrowLeft') {
+                              e.preventDefault();
+                              navPrev();
+                          } else if (lowerK === 'd' || k === 'ArrowRight') {
+                              e.preventDefault();
+                              navNext();
+                          }
                      });
                     
                     // Debounced Wheel/Trackpad Scrolling
