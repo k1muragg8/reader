@@ -327,7 +327,13 @@ object EpubParser {
                          document.getElementById('btn-chapters').addEventListener('click', toggleSidebar);
                          document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
                          backdrop.addEventListener('click', toggleSidebar);
-                         document.getElementById('btn-open').addEventListener('click', () => { if(window.readerBridge) window.readerBridge.openFile(); });
+                         document.getElementById('btn-open').addEventListener('click', () => {
+                             if(window.readerBridge && typeof window.readerBridge.openFile === 'function') {
+                                 window.readerBridge.openFile();
+                             } else {
+                                 console.log("readerBridge or openFile is not available yet");
+                             }
+                         });
                          jumpInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') manualJump(); });
                          
                          document.getElementById('btn-settings').addEventListener('click', (e) => {
@@ -806,14 +812,14 @@ object EpubParser {
         val colors = if (isDarcula) ThemeColors("#2b2d30", "#aaa", "rgba(43, 45, 48, 0.9)", "#4e5254", "#4c5052")
         else ThemeColors("#fff", "#333", "rgba(255, 255, 255, 0.9)", "#ddd", "#eee")
         val welcomeContent = """
-            <div style='display:flex;flex-direction:column;height:100%;justify-content:center;align-items:center;opacity:0.6;text-align:center;padding:20px;gap:20px;'>
-                <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; fill: none; stroke: currentColor; stroke-width: 1.5px;">
+            <div style='display:flex;flex-direction:column;height:100%;justify-content:center;align-items:center;opacity:0.6;text-align:center;padding:20px;gap:20px;' onclick="if(window.readerBridge && typeof window.readerBridge.openFile === 'function') window.readerBridge.openFile();">
+                <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; fill: none; stroke: currentColor; stroke-width: 1.5px; cursor: pointer;">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                 </svg>
-                <div style="font-size: 16px; line-height: 1.8;">
-                    <div>Click the folder icon above to open an EPUB book</div>
-                    <div style="font-size: 14px; margin-top: 8px;">点击顶部的文件夹图标打开 EPUB 书籍</div>
-                    <div style="font-size: 14px; margin-top: 8px;">上部のフォルダアイコンをクリックしてEPUBブックを開きます</div>
+                <div style="font-size: 16px; line-height: 1.8; cursor: pointer;">
+                    <div>Click the folder icon above or here to open an EPUB book</div>
+                    <div style="font-size: 14px; margin-top: 8px;">点击顶部的文件夹图标或此处打开 EPUB 书籍</div>
+                    <div style="font-size: 14px; margin-top: 8px;">上部のフォルダアイコンまたはここをクリックしてEPUBブックを開きます</div>
                 </div>
             </div>
         """.trimIndent()
