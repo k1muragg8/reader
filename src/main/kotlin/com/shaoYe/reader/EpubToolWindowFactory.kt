@@ -31,7 +31,14 @@ class EpubToolWindowFactory : ToolWindowFactory, DumbAware {
         // 使用 !JBColor.isBright() 替代 UIUtil.isUnderDarcula()
         val isDarcula = !JBColor.isBright()
         val scheme = com.intellij.openapi.editor.colors.EditorColorsManager.getInstance().globalScheme
-        browser.loadHTML(EpubParser.getWelcomeHtml(isDarcula, scheme.editorFontSize))
+
+        val props = com.intellij.ide.util.PropertiesComponent.getInstance(project)
+        val savedTheme = props.getValue("READER_MASTER_LAST_THEME")
+        val savedFontFamily = props.getValue("READER_MASTER_LAST_FONT_FAMILY")
+        val savedFontSizeStr = props.getValue("READER_MASTER_LAST_FONT_SIZE")
+        val fontSize = savedFontSizeStr?.toIntOrNull() ?: scheme.editorFontSize
+
+        browser.loadHTML(EpubParser.getWelcomeHtml(isDarcula, fontSize, savedTheme, savedFontFamily))
 
         toolWindow.setTitleActions(
             listOf(

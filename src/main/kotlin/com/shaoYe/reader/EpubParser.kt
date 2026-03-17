@@ -11,7 +11,7 @@ import java.util.Locale
 
 object EpubParser {
 
-    private fun getAppHtml(tocItems: List<TocItem>, contentHtml: String, colors: ThemeColors, fontSize: Int): String {
+    private fun getAppHtml(tocItems: List<TocItem>, contentHtml: String, colors: ThemeColors, fontSize: Int, theme: String?, fontFamily: String?): String {
         val tocListHtml = if (tocItems.isEmpty()) {
             "<div style='padding:10px;color:#888;'>No chapters</div>"
         } else {
@@ -20,9 +20,13 @@ object EpubParser {
             }
         }
 
+        val actualTheme = theme ?: "white"
+        val actualFontFamily = fontFamily ?: "sans"
+        val cssFontFamily = if (actualFontFamily == "serif") "Palatino, \"Palatino Linotype\", \"Book Antiqua\", Georgia, serif" else "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
+
         return """
             <!DOCTYPE html>
-            <html lang='en'>
+            <html lang='en' data-theme='$actualTheme'>
             <head>
                 <meta charset='UTF-8'>
                 <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data:;">
@@ -35,7 +39,7 @@ object EpubParser {
                         --icon-stroke: ${colors.text};
                         --hover-bg: ${if (colors.bg.startsWith("#2")) "rgba(255,255,255,0.08)" else "rgba(0,0,0,0.04)"};
                         --font-size: ${fontSize}px;
-                        --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                        --font-family: $cssFontFamily;
                     }
 
                     /* Theme: White */
@@ -141,13 +145,6 @@ object EpubParser {
                         padding-top: 0; padding-bottom: 0; box-sizing: border-box;
                     }
                     
-                    #jump-input {
-                        width: 50px; height: 24px; background: transparent; color: var(--text);
-                        border: 1px solid rgba(128,128,128, 0.4); border-radius: 4px;
-                        text-align: center; font-size: 11px; font-weight: 500; opacity: 0.7;
-                    }
-                    #jump-input:focus { opacity: 1; outline: none; border-color: var(--text); }
-                    
                     .chapter { break-before: column; }
                     .page-content { padding: 0; margin: 0; width: 100%; box-sizing: border-box; }
                     h1, h2, h3, h4, h5, h6 { break-inside: avoid; break-after: avoid; }
@@ -156,14 +153,17 @@ object EpubParser {
                     
                     ::-webkit-scrollbar { display: none !important; }
 
+                    /* --- TOC Popover --- */
                     #sidebar {
-                        position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
-                        background: var(--sidebar-bg); backdrop-filter: blur(20px);
-                        border-right: 0.5px solid var(--border); transform: translateX(-100%); 
-                        transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-                        z-index: 9999; display: flex; flex-direction: column; padding-top: 0;
+                        position: fixed; top: 12px; left: 12px; bottom: 12px; width: 280px;
+                        background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+                        border: 0.5px solid var(--border); border-radius: 12px;
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1003;
+                        transform: translateY(-10px); opacity: 0; pointer-events: none;
+                        transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+                        display: flex; flex-direction: column; padding-top: 0; overflow: hidden;
                     }
-                    #sidebar.open { transform: translateX(0); }
+                    #sidebar.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
                     .sidebar-header { position: relative; height: 50px; padding: 0 40px 0 20px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; }
                     .sidebar-title { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
                     #btn-close-sidebar { position: absolute; right: 15px; width: 40px; height: 50px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; cursor: pointer; }
@@ -175,15 +175,17 @@ object EpubParser {
                     #sidebar-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.3); z-index: 9000; backdrop-filter: blur(2px); display: none; }
                     #sidebar.open + #sidebar-backdrop { display: block; }
                     
-                    /* --- Search Sidebar --- */
+                    /* --- Search Popover --- */
                     #search-sidebar {
-                        position: fixed; top: 0; right: 0; bottom: 0; width: 320px;
-                        background: var(--sidebar-bg); backdrop-filter: blur(20px);
-                        border-left: 0.5px solid var(--border); transform: translateX(100%); 
-                        transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-                        z-index: 9999; display: flex; flex-direction: column; padding-top: 0;
+                        position: fixed; top: 12px; right: 12px; bottom: 12px; width: 320px;
+                        background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+                        border: 0.5px solid var(--border); border-radius: 12px;
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1003;
+                        transform: translateY(-10px); opacity: 0; pointer-events: none;
+                        transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+                        display: flex; flex-direction: column; padding-top: 0; overflow: hidden;
                     }
-                    #search-sidebar.open { transform: translateX(0); }
+                    #search-sidebar.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
                     
                     .search-header { 
                         padding: 15px; border-bottom: 0.5px solid var(--border); 
@@ -250,7 +252,6 @@ object EpubParser {
                 </div>
 
                 <div id="footer-bar">
-                    <input type="number" id="jump-input" placeholder="#">
                     <span id="page-info">-- / --</span>
                 </div>
 
@@ -266,8 +267,8 @@ object EpubParser {
                     <div class="settings-row">
                         <div class="settings-label">Font Family</div>
                         <div class="font-picker">
-                            <button class="font-btn active" data-value="sans">Sans-Serif</button>
-                            <button class="font-btn" data-value="serif">Serif</button>
+                            <button class="font-btn ${if (actualFontFamily == "sans") "active" else ""}" data-value="sans">Sans-Serif</button>
+                            <button class="font-btn ${if (actualFontFamily == "serif") "active" else ""}" data-value="serif">Serif</button>
                         </div>
                     </div>
                     <div class="settings-row">
@@ -303,7 +304,6 @@ object EpubParser {
                     const wrapper = document.getElementById('reader-wrapper');
                     const textContainer = document.getElementById('reader-text');
                     const pageInfo = document.getElementById('page-info');
-                    const jumpInput = document.getElementById('jump-input');
                     const sidebar = document.getElementById('sidebar');
                     const backdrop = document.getElementById('sidebar-backdrop');
                     
@@ -341,7 +341,6 @@ object EpubParser {
                                  console.log("readerBridge or openFile is not available yet");
                              }
                          });
-                         jumpInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') manualJump(); });
                          
                          document.getElementById('btn-settings').addEventListener('click', (e) => {
                              e.stopPropagation();
@@ -492,15 +491,6 @@ object EpubParser {
                         const idx = Math.ceil((wrapper.scrollLeft + 1) / w);
                         wrapper.scrollTo({ left: (idx - 2) * w, behavior: 'smooth' });
                     }
-                    
-                    function manualJump() {
-                        const val = parseInt(jumpInput.value);
-                        if (val > 0) {
-                            const w = wrapper.clientWidth;
-                            wrapper.scrollTo({ left: (val-1) * w, behavior: 'auto' });
-                            jumpInput.value = ''; jumpInput.blur();
-                        }
-                    }
 
                     function toggleSidebar() { sidebar.classList.toggle('open'); }
                     window.toggleSidebar = toggleSidebar;
@@ -544,9 +534,6 @@ object EpubParser {
                           // Prevent A/D/Arrows when typing in inputs
                           if (document.activeElement &&
                              (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable)) {
-                              if (e.key === 'Enter' && document.activeElement === jumpInput) {
-                                  // Handled elsewhere
-                              }
                               return; // do not trigger shortcuts if typing
                           }
 
@@ -587,7 +574,9 @@ object EpubParser {
                     window.readerZoomIn = function() {
                         const root = document.documentElement;
                         const currentSize = parseInt(getComputedStyle(root).getPropertyValue('--font-size')) || 16;
-                        root.style.setProperty('--font-size', (currentSize + 2) + 'px');
+                        const newSize = currentSize + 2;
+                        root.style.setProperty('--font-size', newSize + 'px');
+                        if (window.readerBridge) window.readerBridge.saveFontSize(newSize.toString());
                         setTimeout(() => { updateLayout(); findCurrentAnchor(); }, 100);
                     };
 
@@ -595,19 +584,10 @@ object EpubParser {
                         const root = document.documentElement;
                         const currentSize = parseInt(getComputedStyle(root).getPropertyValue('--font-size')) || 16;
                         if(currentSize > 10) {
-                            root.style.setProperty('--font-size', (currentSize - 2) + 'px');
+                            const newSize = currentSize - 2;
+                            root.style.setProperty('--font-size', newSize + 'px');
+                            if (window.readerBridge) window.readerBridge.saveFontSize(newSize.toString());
                             setTimeout(() => { updateLayout(); findCurrentAnchor(); }, 100);
-                        }
-                    };
-
-                    window.readerRestoreTheme = function(t) {
-                        if (t) document.documentElement.setAttribute('data-theme', t);
-                    };
-
-                    window.readerRestoreFontFamily = function(f) {
-                        if (f) {
-                            const btn = document.querySelector(`.font-btn[data-value="${'$'}{f}"]`);
-                            if (btn) btn.click();
                         }
                     };
                     // --- Search Logic ---
@@ -773,7 +753,7 @@ object EpubParser {
         """.trimIndent()
     }
 
-    fun loadEpub(file: File, isDarcula: Boolean, fontSize: Int): String {
+    fun loadEpub(file: File, isDarcula: Boolean, fontSize: Int, theme: String? = null, fontFamily: String? = null): String {
         val epubReader = EpubReader()
         val book = epubReader.readEpub(file.inputStream())
         val imageMap = mutableMapOf<String, String>()
@@ -818,10 +798,10 @@ object EpubParser {
             }
             sb.append("<div id='spine-$chapterIndex' class='chapter'><div class='page-content'>${doc.body().html()}</div></div>")
         }
-        return getAppHtml(mapTocToSpineIds(tocItems, book), sb.toString(), colors, fontSize)
+        return getAppHtml(mapTocToSpineIds(tocItems, book), sb.toString(), colors, fontSize, theme, fontFamily)
     }
 
-    fun getWelcomeHtml(isDarcula: Boolean, fontSize: Int): String {
+    fun getWelcomeHtml(isDarcula: Boolean, fontSize: Int, theme: String? = null, fontFamily: String? = null): String {
         val colors = if (isDarcula) ThemeColors("#2b2d30", "#aaa", "rgba(43, 45, 48, 0.9)", "#4e5254", "#4c5052")
         else ThemeColors("#fff", "#333", "rgba(255, 255, 255, 0.9)", "#ddd", "#eee")
         val welcomeContent = """
@@ -836,7 +816,7 @@ object EpubParser {
                 </div>
             </div>
         """.trimIndent()
-        return getAppHtml(emptyList(), welcomeContent, colors, fontSize)
+        return getAppHtml(emptyList(), welcomeContent, colors, fontSize, theme, fontFamily)
     }
 
     private fun getMimeType(href: String): String? {
