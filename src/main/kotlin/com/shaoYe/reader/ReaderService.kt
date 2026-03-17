@@ -85,6 +85,9 @@ class ReaderService(private val project: Project) {
                 // Inject initial font size validation
                 val scheme = EditorColorsManager.getInstance().globalScheme
                 updateFontSize(scheme.editorFontSize)
+
+                // Mark as ready to save progress after a short delay to ensure DOM is fully laid out
+                browser?.executeJavaScript("setTimeout(() => { window.isReadyToSave = true; }, 500);", browser.url, 0)
             }
         }, jbCefBrowser.cefBrowser)
 
