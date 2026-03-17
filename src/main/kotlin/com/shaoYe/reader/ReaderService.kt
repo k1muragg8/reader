@@ -31,12 +31,14 @@ class ReaderService(private val project: Project) {
     private var saveProgressQuery: JBCefJSQuery? = null
     private var saveThemeQuery: JBCefJSQuery? = null
     private var saveFontFamilyQuery: JBCefJSQuery? = null
+    private var saveFontSizeQuery: JBCefJSQuery? = null
 
     companion object {
         private const val KEY_LAST_PATH = "READER_MASTER_LAST_PATH"
         private const val KEY_LAST_PROGRESS = "READER_MASTER_LAST_PROGRESS"
         private const val KEY_LAST_THEME = "READER_MASTER_LAST_THEME"
         private const val KEY_LAST_FONT_FAMILY = "READER_MASTER_LAST_FONT_FAMILY"
+        private const val KEY_LAST_FONT_SIZE = "READER_MASTER_LAST_FONT_SIZE"
 
         fun getInstance(project: Project): ReaderService {
             return project.getService(ReaderService::class.java)
@@ -73,6 +75,14 @@ class ReaderService(private val project: Project) {
         saveFontFamilyQuery?.addHandler { fontStr ->
             try {
                 PropertiesComponent.getInstance(project).setValue(KEY_LAST_FONT_FAMILY, fontStr)
+            } catch (e: Exception) {}
+            JBCefJSQuery.Response("OK")
+        }
+
+        saveFontSizeQuery = JBCefJSQuery.create(jbCefBrowser as JBCefBrowserBase)
+        saveFontSizeQuery?.addHandler { sizeStr ->
+            try {
+                PropertiesComponent.getInstance(project).setValue(KEY_LAST_FONT_SIZE, sizeStr)
             } catch (e: Exception) {}
             JBCefJSQuery.Response("OK")
         }
@@ -124,7 +134,8 @@ class ReaderService(private val project: Project) {
                 openFile: function() { ${openFileQuery?.inject("''")} },
                 saveProgress: function(val) { ${saveProgressQuery?.inject("val")} },
                 saveTheme: function(val) { ${saveThemeQuery?.inject("val")} },
-                saveFontFamily: function(val) { ${saveFontFamilyQuery?.inject("val")} }
+                saveFontFamily: function(val) { ${saveFontFamilyQuery?.inject("val")} },
+                saveFontSize: function(val) { ${saveFontSizeQuery?.inject("val")} }
             };
         """.trimIndent()
         // 修复：既然 browser 已校验不为空，此处不再使用冗余的 ? 号
@@ -135,22 +146,9 @@ class ReaderService(private val project: Project) {
         if (browser == null) return
         val props = PropertiesComponent.getInstance(project)
         val lastProgress = props.getValue(KEY_LAST_PROGRESS)
-        val lastTheme = props.getValue(KEY_LAST_THEME)
-        val lastFont = props.getValue(KEY_LAST_FONT_FAMILY)
 
-        val jsBuilder = StringBuilder()
         if (!lastProgress.isNullOrEmpty()) {
-            jsBuilder.append("if(window.readerRestore) window.readerRestore('$lastProgress');\n")
-        }
-        if (!lastTheme.isNullOrEmpty()) {
-            jsBuilder.append("if(window.readerRestoreTheme) window.readerRestoreTheme('$lastTheme');\n")
-        }
-        if (!lastFont.isNullOrEmpty()) {
-            jsBuilder.append("if(window.readerRestoreFontFamily) window.readerRestoreFontFamily('$lastFont');\n")
-        }
-
-        if (jsBuilder.isNotEmpty()) {
-            browser.executeJavaScript(jsBuilder.toString(), browser.url, 0)
+            browser.executeJavaScript("if(window.readerRestore) window.readerRestore('$lastProgress');\n", browser.url, 0)
         }
     }
 
@@ -177,7 +175,14 @@ class ReaderService(private val project: Project) {
                     // 使用现代 API 处理主题判定警告
                     val isDarcula = !JBColor.isBright()
                     val scheme = EditorColorsManager.getInstance().globalScheme
-                    val htmlContent = EpubParser.loadEpub(file, isDarcula, scheme.editorFontSize)
+
+                    val props = PropertiesComponent.getInstance(project)
+                    val savedTheme = props.getValue(KEY_LAST_THEME)
+                    val savedFontFamily = props.getValue(KEY_LAST_FONT_FAMILY)
+                    val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
+                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: scheme.editorFontSize
+
+                    val htmlContent = EpubParser.loadEpub(file, isDarcula, fontSize, savedTheme, savedFontFamily)
 
                     ApplicationManager.getApplication().invokeLater {
                         browser?.loadHTML(htmlContent, "http://readermaster/")
