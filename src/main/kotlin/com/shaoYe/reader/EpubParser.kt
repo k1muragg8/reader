@@ -92,8 +92,10 @@ object EpubParser {
                     }
                     /* Show toolbar when body has 'hovering' class or when settings are open */
                     body.hovering #toolbar, body.settings-open #toolbar {
-                        transform: translateY(0);
+                        /* We remove the hover toolbar entirely since actions are now in the native IDE Title Bar */
+                        /* transform: translateY(0); */
                     }
+                    #toolbar { display: none !important; }
                     
                     /* Sidebar z-index adjustment if needed, but 9999 is fine */
 
@@ -128,6 +130,7 @@ object EpubParser {
                     
                     /* 去掉内层的高度影响，保证文字直接顶满整个内部高度 */
                     #reader-text {
+                        /* By setting height to 100% and removing bottom padding, we align with the 4px absolute constraint of the #content wrapper */
                         height: 100%; width: 100%; column-fill: auto;
                         padding-top: 0; padding-bottom: 0; box-sizing: border-box;
                     }
@@ -201,7 +204,7 @@ object EpubParser {
 
                     /* --- Settings Popover --- */
                     #settings-popover {
-                        position: fixed; top: 42px; right: 12px; width: 260px;
+                        position: fixed; top: 12px; right: 12px; width: 260px;
                         background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                         border: 0.5px solid var(--border); border-radius: 12px;
                         box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1003;
@@ -338,12 +341,7 @@ object EpubParser {
                          
                          document.getElementById('btn-settings').addEventListener('click', (e) => {
                              e.stopPropagation();
-                             settingsPopover.classList.toggle('open');
-                             if (settingsPopover.classList.contains('open')) {
-                                 document.body.classList.add('settings-open');
-                             } else {
-                                 document.body.classList.remove('settings-open');
-                             }
+                             if (window.toggleSettings) window.toggleSettings();
                          });
 
                          document.addEventListener('click', (e) => {
@@ -501,6 +499,7 @@ object EpubParser {
                     }
 
                     function toggleSidebar() { sidebar.classList.toggle('open'); }
+                    window.toggleSidebar = toggleSidebar;
                     function scrollToId(id) {
                          const el = document.getElementById(id);
                          if(el) { 
@@ -621,6 +620,16 @@ object EpubParser {
                              sidebar.classList.remove('open');
                          }
                     }
+                    window.toggleSearchSidebar = toggleSearchSidebar;
+
+                    window.toggleSettings = function() {
+                         settingsPopover.classList.toggle('open');
+                         if (settingsPopover.classList.contains('open')) {
+                             document.body.classList.add('settings-open');
+                         } else {
+                             document.body.classList.remove('settings-open');
+                         }
+                    };
 
                     // Bind Search Events
                     document.getElementById('btn-search').addEventListener('click', toggleSearchSidebar);
