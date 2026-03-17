@@ -97,12 +97,17 @@ class ReaderService(private val project: Project) {
 
         searchResultsQuery = JBCefJSQuery.create(jbCefBrowser as JBCefBrowserBase)
         searchResultsQuery?.addHandler { resultsStr ->
-            if (resultsStr.isNotEmpty()) {
-                val items = resultsStr.split("|||")
-                val resultsList = items.chunked(2).mapNotNull {
-                    if (it.size == 2) Pair(it[0], it[1]) else null
+            if (resultsStr.isNotEmpty() && resultsStr != "NONE") {
+                if (resultsStr.startsWith("error|||")) {
+                    val errorMsg = resultsStr.removePrefix("error|||")
+                    currentSearchDialog?.updateResults(listOf(Pair("error", "Error: $errorMsg")))
+                } else {
+                    val items = resultsStr.split("|||")
+                    val resultsList = items.chunked(2).mapNotNull {
+                        if (it.size == 2) Pair(it[0], it[1]) else null
+                    }
+                    currentSearchDialog?.updateResults(resultsList)
                 }
-                currentSearchDialog?.updateResults(resultsList)
             } else {
                 currentSearchDialog?.updateResults(emptyList())
             }

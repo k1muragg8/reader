@@ -494,63 +494,74 @@ object EpubParser {
 
                         // 2. Find matches (Text Node Traversal)
                         setTimeout(() => {
-                            const regex = new RegExp(escapeRegex(query), 'gi');
-                            const walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
-                            let node;
-                            const nodesToReplace = [];
+                            try {
+                                const regex = new RegExp(escapeRegex(query), 'gi');
+                                const walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
+                                let node;
+                                const nodesToReplace = [];
 
-                            while(node = walker.nextNode()) {
-                                if (node.parentNode.tagName === 'SCRIPT' || node.parentNode.tagName === 'STYLE') continue;
-                                if (regex.test(node.nodeValue)) {
-                                    nodesToReplace.push(node);
+                                while(node = walker.nextNode()) {
+                                    if (node.parentNode && (node.parentNode.tagName === 'SCRIPT' || node.parentNode.tagName === 'STYLE')) continue;
+                                    if (regex.test(node.nodeValue)) {
+                                        nodesToReplace.push(node);
+                                    }
+                                    regex.lastIndex = 0; // reset
                                 }
-                                regex.lastIndex = 0; // reset
-                            }
 
-                            // 3. Highlight and Collect
-                            let matchCount = 0;
-                            nodesToReplace.forEach(textNode => {
-                                const text = textNode.nodeValue;
-                                const parent = textNode.parentNode;
-                                const frag = document.createDocumentFragment();
-                                let lastIdx = 0;
-                                let match;
-                                regex.lastIndex = 0;
+                                // 3. Highlight and Collect
+                                let matchCount = 0;
+                                nodesToReplace.forEach(textNode => {
+                                    const text = textNode.nodeValue;
+                                    const parent = textNode.parentNode;
+                                    const frag = document.createDocumentFragment();
+                                    let lastIdx = 0;
+                                    let match;
+                                    regex.lastIndex = 0;
 
-                                while ((match = regex.exec(text)) !== null) {
-                                    // Append text before match
-                                    frag.appendChild(document.createTextNode(text.substring(lastIdx, match.index)));
-                                    
-                                    // Create highlight span
-                                    const span = document.createElement('span');
-                                    span.className = 'search-highlight';
-                                    span.id = 'search-match-' + matchCount;
-                                    span.textContent = match[0];
-                                    frag.appendChild(span);
-                                    
-                                    // Collect result for sidebar
-                                    // Get snippet: 20 chars before and after
-                                    const start = Math.max(0, match.index - 20);
-                                    const end = Math.min(text.length, match.index + match[0].length + 20);
-                                    const snippet = text.substring(start, end).replace(match[0], `<b>${'$'}{match[0]}</b>`);
-                                    
-                                    searchMatches.push({
-                                        id: 'search-match-' + matchCount,
-                                        text: '... ' + snippet + ' ...',
-                                    });
+                                    while ((match = regex.exec(text)) !== null) {
+                                        // Avoid infinite loops for zero-width matches
+                                        if (match.index === regex.lastIndex) regex.lastIndex++;
 
-                                    lastIdx = match.index + match[0].length;
-                                    matchCount++;
+                                        // Append text before match
+                                        frag.appendChild(document.createTextNode(text.substring(lastIdx, match.index)));
+
+                                        // Create highlight span
+                                        const span = document.createElement('span');
+                                        span.className = 'search-highlight';
+                                        span.id = 'search-match-' + matchCount;
+                                        span.textContent = match[0];
+                                        frag.appendChild(span);
+
+                                        // Collect result for sidebar
+                                        // Get snippet: 20 chars before and after
+                                        const start = Math.max(0, match.index - 20);
+                                        const end = Math.min(text.length, match.index + match[0].length + 20);
+                                        let snippet = text.substring(start, end).replace(match[0], `<b>${'$'}{match[0]}</b>`);
+                                        // Strip newlines to avoid breaking the Kotlin split later
+                                        snippet = snippet.replace(/[\r\n]+/g, ' ');
+
+                                        searchMatches.push({
+                                            id: 'search-match-' + matchCount,
+                                            text: '... ' + snippet + ' ...',
+                                        });
+
+                                        lastIdx = match.index + match[0].length;
+                                        matchCount++;
+                                    }
+                                    // Append remaining text
+                                    frag.appendChild(document.createTextNode(text.substring(lastIdx)));
+                                    parent.replaceChild(frag, textNode);
+                                });
+
+                                // Push to Kotlin
+                                if (window.readerBridge && window.readerBridge.sendSearchResults) {
+                                    const serialized = searchMatches.map(m => m.id + "|||" + m.text).join("|||");
+                                    window.readerBridge.sendSearchResults(serialized || "NONE"); // Send NONE if empty
                                 }
-                                // Append remaining text
-                                frag.appendChild(document.createTextNode(text.substring(lastIdx)));
-                                parent.replaceChild(frag, textNode);
-                            });
-
-                            // Push to Kotlin
-                            if (window.readerBridge && window.readerBridge.sendSearchResults) {
-                                const serialized = searchMatches.map(m => m.id + "|||" + m.text).join("|||");
-                                window.readerBridge.sendSearchResults(serialized);
+                            } catch (e) {
+                                if (window.readerBridge && window.readerBridge.sendSearchResults) {
+                                    window.readerBridge.sendSearchResults("error|||" + e.toString());
+                                }
                             }
                         }, 50);
                     };
