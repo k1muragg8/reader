@@ -32,6 +32,14 @@ class ReaderService(private val project: Project) {
     private var saveThemeQuery: JBCefJSQuery? = null
     private var saveFontFamilyQuery: JBCefJSQuery? = null
     private var saveFontSizeQuery: JBCefJSQuery? = null
+    private var searchResultsQuery: JBCefJSQuery? = null
+
+    private var progressInfoQuery: JBCefJSQuery? = null
+
+    // State
+    private var currentSearchDialog: SearchDialog? = null
+    private var currentProgressInfoDialog: ProgressDialog? = null
+    private var currentTocItems: List<EpubParser.TocItem> = emptyList()
 
     companion object {
         private const val KEY_LAST_PATH = "READER_MASTER_LAST_PATH"
@@ -87,6 +95,26 @@ class ReaderService(private val project: Project) {
             JBCefJSQuery.Response("OK")
         }
 
+        searchResultsQuery = JBCefJSQuery.create(jbCefBrowser as JBCefBrowserBase)
+        searchResultsQuery?.addHandler { resultsStr ->
+            if (resultsStr.isNotEmpty()) {
+                val items = resultsStr.split("|||")
+                val resultsList = items.chunked(2).mapNotNull {
+                    if (it.size == 2) Pair(it[0], it[1]) else null
+                }
+                currentSearchDialog?.updateResults(resultsList)
+            } else {
+                currentSearchDialog?.updateResults(emptyList())
+            }
+            JBCefJSQuery.Response("OK")
+        }
+
+        progressInfoQuery = JBCefJSQuery.create(jbCefBrowser as JBCefBrowserBase)
+        progressInfoQuery?.addHandler { infoStr ->
+            currentProgressInfoDialog?.updateInfo(infoStr)
+            JBCefJSQuery.Response("OK")
+        }
+
         jbCefBrowser.jbCefClient.addLoadHandler(object : CefLoadHandlerAdapter() {
             override fun onLoadEnd(browser: CefBrowser?, frame: CefFrame?, httpStatusCode: Int) {
                 injectJsBridge(browser)
@@ -135,7 +163,9 @@ class ReaderService(private val project: Project) {
                 saveProgress: function(val) { ${saveProgressQuery?.inject("val")} },
                 saveTheme: function(val) { ${saveThemeQuery?.inject("val")} },
                 saveFontFamily: function(val) { ${saveFontFamilyQuery?.inject("val")} },
-                saveFontSize: function(val) { ${saveFontSizeQuery?.inject("val")} }
+                saveFontSize: function(val) { ${saveFontSizeQuery?.inject("val")} },
+                sendSearchResults: function(val) { ${searchResultsQuery?.inject("val")} },
+                sendProgressInfo: function(val) { ${progressInfoQuery?.inject("val")} }
             };
         """.trimIndent()
         // 修复：既然 browser 已校验不为空，此处不再使用冗余的 ? 号
@@ -182,10 +212,11 @@ class ReaderService(private val project: Project) {
                     val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
                     val fontSize = savedFontSizeStr?.toIntOrNull() ?: scheme.editorFontSize
 
-                    val htmlContent = EpubParser.loadEpub(file, isDarcula, fontSize, savedTheme, savedFontFamily)
+                    val loadResult = EpubParser.loadEpub(file, isDarcula, fontSize, savedTheme, savedFontFamily)
+                    currentTocItems = loadResult.toc
 
                     ApplicationManager.getApplication().invokeLater {
-                        browser?.loadHTML(htmlContent, "http://readermaster/")
+                        browser?.loadHTML(loadResult.html, "http://readermaster/")
                     }
                 } catch (e: Exception) {
                     ApplicationManager.getApplication().invokeLater {
@@ -202,7 +233,52 @@ class ReaderService(private val project: Project) {
     fun zoomIn() = browser?.cefBrowser?.executeJavaScript("window.readerZoomIn()", null, 0)
     fun zoomOut() = browser?.cefBrowser?.executeJavaScript("window.readerZoomOut()", null, 0)
 
-    fun toggleToc() = browser?.cefBrowser?.executeJavaScript("if(window.toggleSidebar) window.toggleSidebar();", null, 0)
-    fun toggleSearch() = browser?.cefBrowser?.executeJavaScript("if(window.toggleSearchSidebar) window.toggleSearchSidebar();", null, 0)
-    fun toggleSettings() = browser?.cefBrowser?.executeJavaScript("if(window.toggleSettings) window.toggleSettings();", null, 0)
+    // --- Kotlin Dialog Handlers ---
+    fun toggleToc() {
+        TocDialog(project, currentTocItems, this).show()
+    }
+
+    fun toggleSearch() {
+        if (currentSearchDialog == null || !currentSearchDialog!!.isShowing) {
+            currentSearchDialog = SearchDialog(project, this)
+            currentSearchDialog?.show()
+        }
+    }
+
+    fun toggleSettings() {
+        SettingsDialog(project, this).show()
+    }
+
+    fun showProgressInfo() {
+        if (currentProgressInfoDialog == null || !currentProgressInfoDialog!!.isShowing) {
+            currentProgressInfoDialog = ProgressDialog(project)
+            currentProgressInfoDialog?.show()
+        }
+    }
+
+    // --- Invoked from Native Dialogs ---
+    fun setTheme(theme: String) {
+        PropertiesComponent.getInstance(project).setValue(KEY_LAST_THEME, theme)
+        browser?.cefBrowser?.executeJavaScript("document.documentElement.setAttribute('data-theme', '$theme');", null, 0)
+    }
+
+    fun setFontFamily(family: String) {
+        PropertiesComponent.getInstance(project).setValue(KEY_LAST_FONT_FAMILY, family)
+        val cssVal = if (family == "serif") "Palatino, 'Palatino Linotype', 'Book Antiqua', Georgia, serif" else "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        browser?.cefBrowser?.executeJavaScript("document.documentElement.style.setProperty('--font-family', \"$cssVal\");", null, 0)
+    }
+
+    fun scrollToId(id: String) {
+        browser?.cefBrowser?.executeJavaScript("if(window.scrollToId) window.scrollToId('$id');", null, 0)
+    }
+
+    fun performSearch(query: String) {
+        // Escape query slightly for JS string
+        val safeQuery = query.replace("'", "\\'").replace("\"", "\\\"").replace("\n", "\\n")
+        browser?.cefBrowser?.executeJavaScript("if(window.performSearchFromNative) window.performSearchFromNative('$safeQuery');", null, 0)
+    }
+
+    fun jumpToMatch(id: String) {
+        browser?.cefBrowser?.executeJavaScript("if(window.jumpToMatch) window.jumpToMatch('$id');", null, 0)
+    }
 }

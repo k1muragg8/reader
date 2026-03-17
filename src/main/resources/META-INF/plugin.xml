@@ -44,6 +44,16 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <h3>Version 1.3.1</h3>
+    <ul>
+        <li><b>Native Toolwindow Controls</b>: Removed the intrusive floating HTML toolbar. All reading controls (Open Book, Settings, Chapters, Search, Progress) are now elegantly integrated into the native IntelliJ Tool Window header bar.</li>
+        <li><b>Native Dialog Popups</b>: Chapters, Settings, and Search results now open in clean, detached native IntelliJ dialog popups rather than covering the reading view.</li>
+        <li><b>Reading Progress Dialog</b>: Added a new dedicated progress button to view your exact reading percentage.</li>
+        <li><b>Absolute Positioning & Resizing Fixes</b>: Perfected window resize tracking. Expanding the sidebar will now snap you to the exact text node you were reading, ending the frustrating pagination offsets.</li>
+        <li><b>Persistent Settings</b>: Themes, Font Family, and Zoom level changes now persist seamlessly across reading sessions.</li>
+        <li><b>Symmetric Layout Constraints</b>: Finalized the vertical padding constraints to be perfectly symmetrical across the top and bottom edges.</li>
+    </ul>
+
     <h3>Version 1.2.1</h3>
     <ul>
         <li><b>UX Polish</b>: Refined the welcome screen with friendly, multi-lingual instructions and icons.</li>
