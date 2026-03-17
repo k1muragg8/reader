@@ -45,7 +45,8 @@ class EpubToolWindowFactory : ToolWindowFactory, DumbAware {
                 ToggleTocAction(),
                 OpenFileAction(),
                 ToggleSearchAction(),
-                ToggleSettingsAction()
+                ToggleSettingsAction(),
+                ShowProgressAction()
             )
         )
 

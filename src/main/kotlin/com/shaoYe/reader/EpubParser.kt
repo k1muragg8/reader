@@ -11,15 +11,7 @@ import java.util.Locale
 
 object EpubParser {
 
-    private fun getAppHtml(tocItems: List<TocItem>, contentHtml: String, colors: ThemeColors, fontSize: Int, theme: String?, fontFamily: String?): String {
-        val tocListHtml = if (tocItems.isEmpty()) {
-            "<div style='padding:10px;color:#888;'>No chapters</div>"
-        } else {
-            tocItems.joinToString("") {
-                "<div class='toc-item' onclick=\"scrollToId('${it.htmlId}')\">${it.title}</div>"
-            }
-        }
-
+    private fun getAppHtml(contentHtml: String, colors: ThemeColors, fontSize: Int, theme: String?, fontFamily: String?): String {
         val actualTheme = theme ?: "white"
         val actualFontFamily = fontFamily ?: "sans"
         val cssFontFamily = if (actualFontFamily == "serif") "Palatino, \"Palatino Linotype\", \"Book Antiqua\", Georgia, serif" else "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
@@ -152,146 +144,14 @@ object EpubParser {
                     img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 20px auto; border-radius: 8px; break-inside: avoid; }
                     
                     ::-webkit-scrollbar { display: none !important; }
-
-                    /* --- TOC Popover --- */
-                    #sidebar {
-                        position: fixed; top: 12px; left: 12px; bottom: 12px; width: 280px;
-                        background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-                        border: 0.5px solid var(--border); border-radius: 12px;
-                        box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1003;
-                        transform: translateY(-10px); opacity: 0; pointer-events: none;
-                        transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
-                        display: flex; flex-direction: column; padding-top: 0; overflow: hidden;
-                    }
-                    #sidebar.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
-                    .sidebar-header { position: relative; height: 50px; padding: 0 40px 0 20px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; }
-                    .sidebar-title { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
-                    #btn-close-sidebar { position: absolute; right: 15px; width: 40px; height: 50px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; cursor: pointer; }
-                    #btn-close-sidebar svg { width: 18px; height: 18px; stroke: var(--text); stroke-width: 2px; fill: none; opacity: 0.7; }
-                    
-                    .toc-list { flex: 1; overflow-y: auto; padding: 10px 0; }
-                    .toc-item { padding: 10px 20px; font-size: 13px; cursor: pointer; color: var(--text); opacity: 0.85; border-left: 2px solid transparent; transition: all 0.2s; }
-                    .toc-item:hover { background: var(--hover-bg); opacity: 1; border-left-color: var(--icon-stroke); }
-                    #sidebar-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.3); z-index: 9000; backdrop-filter: blur(2px); display: none; }
-                    #sidebar.open + #sidebar-backdrop { display: block; }
-                    
-                    /* --- Search Popover --- */
-                    #search-sidebar {
-                        position: fixed; top: 12px; right: 12px; bottom: 12px; width: 320px;
-                        background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-                        border: 0.5px solid var(--border); border-radius: 12px;
-                        box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1003;
-                        transform: translateY(-10px); opacity: 0; pointer-events: none;
-                        transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
-                        display: flex; flex-direction: column; padding-top: 0; overflow: hidden;
-                    }
-                    #search-sidebar.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
-                    
-                    .search-header { 
-                        padding: 15px; border-bottom: 0.5px solid var(--border); 
-                        display: flex; gap: 8px; align-items: center; 
-                    }
-                    #search-input {
-                        flex: 1; height: 32px; border-radius: 6px; border: 1px solid var(--border);
-                        background: rgba(128,128,128, 0.1); color: var(--text); padding: 0 10px;
-                        font-size: 13px; outline: none; transition: all 0.2s;
-                    }
-                    #search-input:focus { background: var(--bg); border-color: var(--icon-stroke); }
-                    
-                    #search-results { flex: 1; overflow-y: auto; padding: 10px 0; }
-                    .search-result-item {
-                        padding: 12px 20px; cursor: pointer; border-bottom: 0.5px solid rgba(128,128,128, 0.1);
-                        transition: background 0.2s;
-                    }
-                    .search-result-item:hover { background: var(--hover-bg); }
-                    .search-result-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text); }
-                    .search-result-snippet { font-size: 12px; color: var(--text); opacity: 0.7; line-height: 1.4; }
                     .search-highlight { background-color: #ffeb3b; color: #000; border-radius: 2px; box-shadow: 0 0 2px rgba(0,0,0,0.2); }
                     .search-match { font-weight: bold; color: var(--icon-stroke); background: rgba(255, 235, 59, 0.3); }
-
-
-                    /* --- Settings Popover --- */
-                    #settings-popover {
-                        position: fixed; top: 12px; right: 12px; width: 260px;
-                        background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-                        border: 0.5px solid var(--border); border-radius: 12px;
-                        box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1003;
-                        transform: translateY(-10px); opacity: 0; pointer-events: none;
-                        transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
-                        padding: 16px; display: flex; flex-direction: column; gap: 16px;
-                    }
-                    #settings-popover.open {
-                        transform: translateY(0); opacity: 1; pointer-events: auto;
-                    }
-                    .settings-row { display: flex; flex-direction: column; gap: 8px; }
-                    .settings-label { font-size: 12px; font-weight: 600; color: var(--text); opacity: 0.6; text-transform: uppercase; letter-spacing: 0.5px; }
-                    .theme-picker { display: flex; gap: 10px; }
-                    .theme-btn {
-                        flex: 1; height: 36px; border-radius: 18px; border: 1px solid var(--border); cursor: pointer;
-                        display: flex; align-items: center; justify-content: center; font-size: 13px;
-                    }
-                    .theme-btn[data-value="white"] { background: #ffffff; color: #000; }
-                    .theme-btn[data-value="sepia"] { background: #fbf0d9; color: #5f4b32; }
-                    .theme-btn[data-value="dark"] { background: #1e1e1e; color: #d4d4d4; }
-                    .font-picker { display: flex; background: var(--hover-bg); border-radius: 8px; padding: 2px; }
-                    .font-btn {
-                        flex: 1; height: 32px; border: none; background: transparent; color: var(--text);
-                        border-radius: 6px; cursor: pointer; font-size: 13px; transition: background 0.2s;
-                    }
-                    .font-btn.active { background: var(--bg); box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-weight: 500; }
 
                 </style>
             </head>
             <body>
-                <div id="toolbar">
-                    <!-- Kept toolbar element as dummy since some listeners might still reference buttons if not fully cleaned up -->
-                    <button id="btn-chapters" style="display:none;"></button>
-                    <button id="btn-open" style="display:none;"></button>
-                    <button id="btn-search" style="display:none;"></button>
-                    <button id="btn-settings" style="display:none;"></button>
-                </div>
-
                 <div id="footer-bar">
                     <span id="page-info">-- / --</span>
-                </div>
-
-                <div id="settings-popover">
-                    <div class="settings-row">
-                        <div class="settings-label">Theme</div>
-                        <div class="theme-picker">
-                            <button class="theme-btn" data-value="white">White</button>
-                            <button class="theme-btn" data-value="sepia">Sepia</button>
-                            <button class="theme-btn" data-value="dark">Dark</button>
-                        </div>
-                    </div>
-                    <div class="settings-row">
-                        <div class="settings-label">Font Family</div>
-                        <div class="font-picker">
-                            <button class="font-btn ${if (actualFontFamily == "sans") "active" else ""}" data-value="sans">Sans-Serif</button>
-                            <button class="font-btn ${if (actualFontFamily == "serif") "active" else ""}" data-value="serif">Serif</button>
-                        </div>
-                    </div>
-                    <div class="settings-row">
-                        <div class="settings-label">Font Size</div>
-                        <div style="display: flex; gap: 10px;">
-                            <button id="btn-zoom-out" class="theme-btn" style="background: var(--hover-bg); border: none; color: var(--text);">A-</button>
-                            <button id="btn-zoom-in" class="theme-btn" style="background: var(--hover-bg); border: none; color: var(--text);">A+</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="sidebar">
-                    <div class="sidebar-header"><span class="sidebar-title">目录</span><button id="btn-close-sidebar"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div>
-                    <div class="toc-list">$tocListHtml</div>
-                </div>
-                <div id="sidebar-backdrop"></div>
-
-                <div id="search-sidebar">
-                    <div class="search-header">
-                        <input type="text" id="search-input" placeholder="全文搜索...">
-                        <button id="btn-close-search" class="icon-btn"><svg class="feather" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-                    </div>
-                    <div id="search-results"></div>
                 </div>
 
                 <div id="content">
@@ -620,17 +480,20 @@ object EpubParser {
                     document.getElementById('btn-close-search').addEventListener('click', toggleSearchSidebar);
                     searchInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') performSearch(); });
 
-                    function performSearch() {
-                        const query = searchInput.value.trim();
-                        if (!query) return;
+                    window.performSearchFromNative = function(query) {
+                        query = query.trim();
+                        if (!query) {
+                            if (window.readerBridge && window.readerBridge.sendSearchResults) {
+                                window.readerBridge.sendSearchResults("");
+                            }
+                            return;
+                        }
 
                         // 1. Clear previous
                         clearHighlights();
-                        searchResults.innerHTML = '<div style="padding:20px;text-align:center;opacity:0.5">搜索中...</div>';
                         searchMatches = [];
 
                         // 2. Find matches (Text Node Traversal)
-                        // delayed to allow UI update
                         setTimeout(() => {
                             const regex = new RegExp(escapeRegex(query), 'gi');
                             const walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
@@ -670,12 +533,11 @@ object EpubParser {
                                     // Get snippet: 20 chars before and after
                                     const start = Math.max(0, match.index - 20);
                                     const end = Math.min(text.length, match.index + match[0].length + 20);
-                                    const snippet = text.substring(start, end).replace(match[0], `<span class="search-match">${'$'}{match[0]}</span>`);
+                                    const snippet = text.substring(start, end).replace(match[0], `<b>${'$'}{match[0]}</b>`);
                                     
                                     searchMatches.push({
                                         id: 'search-match-' + matchCount,
                                         text: '... ' + snippet + ' ...',
-                                        // Try to find a chapter title? simple for now
                                     });
 
                                     lastIdx = match.index + match[0].length;
@@ -686,9 +548,13 @@ object EpubParser {
                                 parent.replaceChild(frag, textNode);
                             });
 
-                            renderSearchResults(matchCount);
+                            // Push to Kotlin
+                            if (window.readerBridge && window.readerBridge.sendSearchResults) {
+                                const serialized = searchMatches.map(m => m.id + "|||" + m.text).join("|||");
+                                window.readerBridge.sendSearchResults(serialized);
+                            }
                         }, 50);
-                    }
+                    };
 
                     function clearHighlights() {
                         // Crucial: Restore original text nodes to avoid DOM explosion on repeated searches
@@ -697,27 +563,7 @@ object EpubParser {
                         highlights.forEach(span => {
                             const parent = span.parentNode;
                             parent.replaceChild(document.createTextNode(span.textContent), span);
-                            // parent.normalize() removed as it can destroy element nodes in complex EPUB structures
                         });
-                        searchResults.innerHTML = '';
-                    }
-
-                    function renderSearchResults(count) {
-                        if (count === 0) {
-                            searchResults.innerHTML = '<div style="padding:20px;text-align:center;opacity:0.5">未找到结果</div>';
-                            return;
-                        }
-                        
-                        let html = `<div style="padding:10px 20px;font-size:12px;opacity:0.6">找到 ${'$'}{count} 个结果</div>`;
-                        searchMatches.forEach((m, i) => {
-                            html += `
-                                <div class="search-result-item" onclick="jumpToMatch('${'$'}{m.id}')">
-                                    <div class="search-result-title">结果 ${'$'}{i+1}</div>
-                                    <div class="search-result-snippet">${'$'}{m.text}</div>
-                                </div>
-                            `;
-                        });
-                        searchResults.innerHTML = html;
                     }
 
                     window.jumpToMatch = function(id) {
@@ -738,9 +584,6 @@ object EpubParser {
                              setTimeout(() => {
                                  el.style.backgroundColor = oldBg || ''; 
                              }, 500);
-                             
-                             // Close sidebar on mobile/if preferred, but keeping open is usually better for "Next/Prev" feeling
-                             if (window.innerWidth < 600) toggleSearchSidebar();
                          }
                     };
 
@@ -753,7 +596,9 @@ object EpubParser {
         """.trimIndent()
     }
 
-    fun loadEpub(file: File, isDarcula: Boolean, fontSize: Int, theme: String? = null, fontFamily: String? = null): String {
+    data class EpubLoadResult(val html: String, val toc: List<TocItem>)
+
+    fun loadEpub(file: File, isDarcula: Boolean, fontSize: Int, theme: String? = null, fontFamily: String? = null): EpubLoadResult {
         val epubReader = EpubReader()
         val book = epubReader.readEpub(file.inputStream())
         val imageMap = mutableMapOf<String, String>()
@@ -798,7 +643,9 @@ object EpubParser {
             }
             sb.append("<div id='spine-$chapterIndex' class='chapter'><div class='page-content'>${doc.body().html()}</div></div>")
         }
-        return getAppHtml(mapTocToSpineIds(tocItems, book), sb.toString(), colors, fontSize, theme, fontFamily)
+        val mappedToc = mapTocToSpineIds(tocItems, book)
+        val html = getAppHtml(sb.toString(), colors, fontSize, theme, fontFamily)
+        return EpubLoadResult(html, mappedToc)
     }
 
     fun getWelcomeHtml(isDarcula: Boolean, fontSize: Int, theme: String? = null, fontFamily: String? = null): String {
@@ -816,7 +663,7 @@ object EpubParser {
                 </div>
             </div>
         """.trimIndent()
-        return getAppHtml(emptyList(), welcomeContent, colors, fontSize, theme, fontFamily)
+        return getAppHtml(welcomeContent, colors, fontSize, theme, fontFamily)
     }
 
     private fun getMimeType(href: String): String? {

@@ -52,3 +52,8 @@ class ToggleSettingsAction : AnAction("Settings", "Toggle settings popover", com
     }
 }
 
+class ShowProgressAction : AnAction("Progress", "Show reading progress", com.intellij.icons.AllIcons.Actions.PreviewDetails), DumbAware {
+    override fun actionPerformed(e: AnActionEvent) {
+        e.project?.let { ReaderService.getInstance(it).showProgressInfo() }
+    }
+}
