@@ -252,7 +252,10 @@ class ReaderService(private val project: Project) {
     fun showProgressInfo() {
         if (currentProgressInfoDialog == null || !currentProgressInfoDialog!!.isShowing) {
             currentProgressInfoDialog = ProgressDialog(project)
+            browser?.cefBrowser?.executeJavaScript("if(window.requestProgressInfo) window.requestProgressInfo();", null, 0)
             currentProgressInfoDialog?.show()
+        } else {
+            browser?.cefBrowser?.executeJavaScript("if(window.requestProgressInfo) window.requestProgressInfo();", null, 0)
         }
     }
 

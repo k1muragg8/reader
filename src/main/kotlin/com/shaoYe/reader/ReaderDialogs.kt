@@ -8,9 +8,9 @@ import com.intellij.ui.components.JBTextField
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
-import java.awt.event.KeyAdapter
-import java.awt.event.KeyEvent
 import javax.swing.*
+import javax.swing.event.DocumentEvent
+import javax.swing.event.DocumentListener
 
 class TocDialog(project: Project, private val tocItems: List<EpubParser.TocItem>, private val service: ReaderService) : DialogWrapper(project, true) {
     init {
@@ -37,7 +37,7 @@ class TocDialog(project: Project, private val tocItems: List<EpubParser.TocItem>
         return scrollPane
     }
 
-    override fun createActions() = arrayOf(okAction)
+    override fun createActions() = emptyArray<Action>()
 }
 
 class ProgressDialog(project: Project) : DialogWrapper(project, false) {
@@ -63,7 +63,7 @@ class ProgressDialog(project: Project) : DialogWrapper(project, false) {
         return panel
     }
 
-    override fun createActions() = arrayOf(okAction)
+    override fun createActions() = emptyArray<Action>()
 }
 
 class SettingsDialog(project: Project, private val service: ReaderService) : DialogWrapper(project, true) {
@@ -109,7 +109,7 @@ class SettingsDialog(project: Project, private val service: ReaderService) : Dia
         return panel
     }
 
-    override fun createActions() = arrayOf(okAction)
+    override fun createActions() = emptyArray<Action>()
 }
 
 class SearchDialog(project: Project, private val service: ReaderService) : DialogWrapper(project, true) {
@@ -140,19 +140,33 @@ class SearchDialog(project: Project, private val service: ReaderService) : Dialo
         val panel = JPanel(BorderLayout())
 
         val searchField = JBTextField()
-        searchField.addKeyListener(object : KeyAdapter() {
-            override fun keyPressed(e: KeyEvent) {
-                if (e.keyCode == KeyEvent.VK_ENTER) {
+
+        var searchTimer: Timer? = null
+        searchField.document.addDocumentListener(object : DocumentListener {
+            override fun insertUpdate(e: DocumentEvent?) { scheduleSearch() }
+            override fun removeUpdate(e: DocumentEvent?) { scheduleSearch() }
+            override fun changedUpdate(e: DocumentEvent?) { scheduleSearch() }
+
+            private fun scheduleSearch() {
+                searchTimer?.stop()
+                searchTimer = Timer(300) {
                     val query = searchField.text
                     if (query.isNotBlank()) {
                         listModel.clear()
                         listModel.addElement("Searching...")
                         resultIds.clear()
                         service.performSearch(query)
+                    } else {
+                        listModel.clear()
+                        resultIds.clear()
+                        service.performSearch("") // Clear highlights
                     }
                 }
+                searchTimer?.isRepeats = false
+                searchTimer?.start()
             }
         })
+
         panel.add(searchField, BorderLayout.NORTH)
 
         val list = JBList(listModel)
@@ -172,5 +186,5 @@ class SearchDialog(project: Project, private val service: ReaderService) : Dialo
         return panel
     }
 
-    override fun createActions() = arrayOf(okAction)
+    override fun createActions() = emptyArray<Action>()
 }
