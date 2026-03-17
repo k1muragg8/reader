@@ -304,9 +304,11 @@ object EpubParser {
                     let isResizing = false;
                     let resizeTimer = null;
                     let saveTimeout = null;
+                    let progressTimeout = null;
                     
                     // 影子追踪器：记录当前视野中“最关键”的那个元素索引
                     let currentAnchorIndex = 0;
+                    let currentAnchorAbsoluteLeft = 0;
                     let allElements = [];
 
                     const settingsPopover = document.getElementById('settings-popover');
@@ -405,17 +407,17 @@ object EpubParser {
                     });
 
                     function findCurrentAnchor() {
-                        const viewWidth = wrapper.clientWidth;
-                        // 策略：使用 getBoundingClientRect() 准确获取在屏幕中的位置
+                        let bestIndex = 0;
+                        let minDistance = Infinity;
                         for (let i = 0; i < allElements.length; i++) {
                             const el = allElements[i];
                             const rect = el.getBoundingClientRect();
-                            // 如果元素的右边缘大于 0（在屏幕可见区域内或更靠右）
-                            if (rect.right > 0) {
-                                currentAnchorIndex = i;
-                                break;
+                            if (rect.left >= 0 && rect.left < minDistance) {
+                                minDistance = rect.left;
+                                bestIndex = i;
                             }
                         }
+                        currentAnchorIndex = bestIndex;
                     }
 
                     // --- 2. 战时：无感冻结重排 ---
@@ -428,6 +430,12 @@ object EpubParser {
                             if (!isResizing) {
                                 isResizing = true;
                                 wrapper.classList.add('resizing'); // 杀掉动画和吸附
+
+                                const anchorEl = allElements[currentAnchorIndex];
+                                if (anchorEl) {
+                                    const rect = anchorEl.getBoundingClientRect();
+                                    currentAnchorAbsoluteLeft = wrapper.scrollLeft + rect.left;
+                                }
                             }
                             
                             // B. 拖动中：实时计算但不乱跳
@@ -437,17 +445,10 @@ object EpubParser {
                             updateLayout(width);
 
                             // 强行纠偏：找到原来的主角在新舞台的位置
-                            const anchorEl = allElements[currentAnchorIndex];
-                            if (anchorEl) {
+                            if (allElements[currentAnchorIndex]) {
                                 const newWidth = wrapper.clientWidth;
-                                // 使用 getBoundingClientRect 计算元素当前偏离视口的距离
-                                const rect = anchorEl.getBoundingClientRect();
-                                // 当前的 scrollLeft 加上元素相对于视口的左偏移，得到元素在整个滚动区域的绝对左坐标
-                                const absoluteLeft = wrapper.scrollLeft + rect.left;
-                                // 它应该在哪一页？
-                                const targetLeft = Math.floor(absoluteLeft / (newWidth || 1)) * newWidth;
-                                // 瞬移过去
-                                wrapper.scrollTo(targetLeft, 0);
+                                const targetLeft = Math.floor(currentAnchorAbsoluteLeft / (newWidth || 1)) * newWidth;
+                                wrapper.scrollTo({left: targetLeft, behavior: 'instant'});
                             }
 
                             // C. 拖动结束：200ms后解除麻醉
@@ -460,7 +461,10 @@ object EpubParser {
                     });
                     observer.observe(wrapper);
 
+                    window.isReadyToSave = false;
+
                     function saveToBridge() {
+                        if(!window.isReadyToSave) return;
                         const w = wrapper.clientWidth;
                         if(w > 0 && window.readerBridge) {
                             const maxScroll = wrapper.scrollWidth - w;
@@ -472,13 +476,13 @@ object EpubParser {
                     // --- Navigation ---
                     function navNext() { 
                         const w = wrapper.clientWidth;
-                        const idx = Math.round(wrapper.scrollLeft / w);
-                        wrapper.scrollTo({ left: (idx + 1) * w, behavior: 'smooth' });
+                        const idx = Math.ceil((wrapper.scrollLeft + 1) / w);
+                        wrapper.scrollTo({ left: idx * w, behavior: 'smooth' });
                     }
                     function navPrev() { 
                         const w = wrapper.clientWidth;
-                        const idx = Math.round(wrapper.scrollLeft / w);
-                        wrapper.scrollTo({ left: (idx - 1) * w, behavior: 'smooth' });
+                        const idx = Math.ceil((wrapper.scrollLeft + 1) / w);
+                        wrapper.scrollTo({ left: (idx - 2) * w, behavior: 'smooth' });
                     }
                     
                     function manualJump() {
@@ -501,16 +505,19 @@ object EpubParser {
                     
                     function updateProgress() {
                         if (isResizing) return;
-                        const w = wrapper.clientWidth;
-                        const scrollW = wrapper.scrollWidth;
-                        if(w > 0) {
-                             const current = Math.round(wrapper.scrollLeft / w) + 1;
-                             const total = Math.ceil(scrollW / w) || 1;
-                             const maxScroll = scrollW - w;
-                             const pct = maxScroll > 0 ? Math.round((wrapper.scrollLeft / maxScroll) * 100) : 0;
-                             const text = current + ' / ' + total + ' (' + pct + '%)';
-                             if(pageInfo) pageInfo.textContent = text;
-                        }
+                        if (progressTimeout) clearTimeout(progressTimeout);
+                        progressTimeout = setTimeout(() => {
+                            const w = wrapper.clientWidth;
+                            const scrollW = wrapper.scrollWidth;
+                            if(w > 0) {
+                                 const current = Math.ceil((wrapper.scrollLeft + 1) / w);
+                                 const total = Math.ceil(scrollW / w) || 1;
+                                 const maxScroll = scrollW - w;
+                                 const pct = maxScroll > 0 ? Math.round((wrapper.scrollLeft / maxScroll) * 100) : 0;
+                                 const text = current + ' / ' + total + ' (' + pct + '%)';
+                                 if(pageInfo) pageInfo.textContent = text;
+                            }
+                        }, 50);
                     }
                     
                     window.readerRestore = function(s) {
@@ -527,11 +534,11 @@ object EpubParser {
                      document.addEventListener('keydown', function(e) {
                           // Prevent A/D/Arrows when typing in inputs
                           if (document.activeElement &&
-                             (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                             (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable)) {
                               if (e.key === 'Enter' && document.activeElement === jumpInput) {
                                   // Handled elsewhere
                               }
-                              return;
+                              return; // do not trigger shortcuts if typing
                           }
 
                           const k = e.key;
@@ -540,9 +547,11 @@ object EpubParser {
                           // Map A/D and Arrow Keys to Pagination
                           if (lowerK === 'a' || k === 'ArrowLeft') {
                               e.preventDefault();
+                              e.stopPropagation();
                               navPrev();
                           } else if (lowerK === 'd' || k === 'ArrowRight') {
                               e.preventDefault();
+                              e.stopPropagation();
                               navNext();
                           }
                      });
@@ -685,12 +694,11 @@ object EpubParser {
                     function clearHighlights() {
                         // Crucial: Restore original text nodes to avoid DOM explosion on repeated searches
                         // Simple cleanup: remove spans, keep text. 
-                        // Note: normalize() joins adjacent text nodes back together.
                         const highlights = textContainer.querySelectorAll('.search-highlight');
                         highlights.forEach(span => {
                             const parent = span.parentNode;
                             parent.replaceChild(document.createTextNode(span.textContent), span);
-                            parent.normalize();
+                            // parent.normalize() removed as it can destroy element nodes in complex EPUB structures
                         });
                         searchResults.innerHTML = '';
                     }
@@ -719,8 +727,8 @@ object EpubParser {
                              const w = wrapper.clientWidth;
                              const rect = el.getBoundingClientRect();
                              const absoluteLeft = wrapper.scrollLeft + rect.left;
-                             // Calculate the start of the column/page
-                             const targetScroll = Math.floor(absoluteLeft / w) * w;
+                             // Calculate the start of the column/page, minus the 4px padding so we don't skew by a column
+                             const targetScroll = Math.floor((absoluteLeft - 4) / w) * w;
                              wrapper.scrollTo({ left: targetScroll, behavior: 'auto' });
                              
                              // Flash effect (background color)
