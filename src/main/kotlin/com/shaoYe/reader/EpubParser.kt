@@ -114,13 +114,19 @@ object EpubParser {
 
                     .feather { width: 16px; height: 16px; fill: none; stroke: var(--icon-stroke); stroke-width: 1.5px; }
 
+                    #footer-bar {
+                        position: absolute; bottom: 0; left: 0; right: 0; height: 24px;
+                        display: flex; align-items: center; justify-content: center; gap: 8px;
+                        background: transparent; z-index: 1000;
+                    }
+
                     #page-info {
                         font-size: 10px; color: var(--text); opacity: 0.6; margin: 0 4px;
                         font-weight: 500; font-family: -apple-system, sans-serif; cursor: default; white-space: nowrap;
                     }
                     
-                    /* 极致紧贴边框，由外层容器强制给出 4px 留白，防止内容和滚动条相互影响 */
-                    #content { position: absolute; top: 4px; bottom: 4px; left: 0; right: 0; overflow: hidden; }
+                    /* 极致紧贴边框，由外层容器强制给出顶部 4px 和底部 24px 留白（为 footer 腾出空间） */
+                    #content { position: absolute; top: 4px; bottom: 24px; left: 0; right: 0; overflow: hidden; }
 
                     #reader-wrapper {
                         width: 100%; height: 100%; overflow-x: hidden; overflow-y: hidden;
@@ -236,18 +242,16 @@ object EpubParser {
             </head>
             <body>
                 <div id="toolbar">
-                    <div class="toolbar-group">
-                        <button id="btn-chapters" class="icon-btn" title="目录"><svg class="feather" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
-                        <button id="btn-open" class="icon-btn" title="打开文件"><svg class="feather" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></button>
-                    </div>
-                    <div class="toolbar-group">
-                        <input type="number" id="jump-input" placeholder="#">
-                        <span id="page-info">-- / --</span>
-                    </div>
-                    <div class="toolbar-group">
-                        <button id="btn-search" class="icon-btn" title="搜索"><svg class="feather" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
-                        <button id="btn-settings" class="icon-btn" title="设置"><svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
-                    </div>
+                    <!-- Kept toolbar element as dummy since some listeners might still reference buttons if not fully cleaned up -->
+                    <button id="btn-chapters" style="display:none;"></button>
+                    <button id="btn-open" style="display:none;"></button>
+                    <button id="btn-search" style="display:none;"></button>
+                    <button id="btn-settings" style="display:none;"></button>
+                </div>
+
+                <div id="footer-bar">
+                    <input type="number" id="jump-input" placeholder="#">
+                    <span id="page-info">-- / --</span>
                 </div>
 
                 <div id="settings-popover">
