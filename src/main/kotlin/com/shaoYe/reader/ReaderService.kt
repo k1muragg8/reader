@@ -196,4 +196,8 @@ class ReaderService(private val project: Project) {
     fun prevPage() = browser?.cefBrowser?.executeJavaScript("window.readerPrev()", null, 0)
     fun zoomIn() = browser?.cefBrowser?.executeJavaScript("window.readerZoomIn()", null, 0)
     fun zoomOut() = browser?.cefBrowser?.executeJavaScript("window.readerZoomOut()", null, 0)
+
+    fun toggleToc() = browser?.cefBrowser?.executeJavaScript("if(window.toggleSidebar) window.toggleSidebar();", null, 0)
+    fun toggleSearch() = browser?.cefBrowser?.executeJavaScript("if(window.toggleSearchSidebar) window.toggleSearchSidebar();", null, 0)
+    fun toggleSettings() = browser?.cefBrowser?.executeJavaScript("if(window.toggleSettings) window.toggleSettings();", null, 0)
 }

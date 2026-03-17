@@ -33,6 +33,15 @@ class EpubToolWindowFactory : ToolWindowFactory, DumbAware {
         val scheme = com.intellij.openapi.editor.colors.EditorColorsManager.getInstance().globalScheme
         browser.loadHTML(EpubParser.getWelcomeHtml(isDarcula, scheme.editorFontSize))
 
+        toolWindow.setTitleActions(
+            listOf(
+                ToggleTocAction(),
+                OpenFileAction(),
+                ToggleSearchAction(),
+                ToggleSettingsAction()
+            )
+        )
+
         val contentFactory = ContentFactory.getInstance()
         val content = contentFactory.createContent(panel, "", false)
         toolWindow.contentManager.addContent(content)
