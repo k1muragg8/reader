@@ -110,19 +110,8 @@ object EpubParser {
 
                     .feather { width: 16px; height: 16px; fill: none; stroke: var(--icon-stroke); stroke-width: 1.5px; }
 
-                    #footer-bar {
-                        position: absolute; bottom: 0; left: 0; right: 0; height: 24px;
-                        display: flex; align-items: center; justify-content: center; gap: 8px;
-                        background: transparent; z-index: 1000;
-                    }
-
-                    #page-info {
-                        font-size: 10px; color: var(--text); opacity: 0.6; margin: 0 4px;
-                        font-weight: 500; font-family: -apple-system, sans-serif; cursor: default; white-space: nowrap;
-                    }
-                    
-                    /* 极致紧贴边框，由外层容器强制给出顶部 4px 和底部 24px 留白（为 footer 腾出空间） */
-                    #content { position: absolute; top: 4px; bottom: 24px; left: 0; right: 0; overflow: hidden; }
+                    /* 极致紧贴边框，由外层容器强制给出顶部 4px 和底部 4px 留白 */
+                    #content { position: absolute; top: 4px; bottom: 4px; left: 0; right: 0; overflow: hidden; }
 
                     #reader-wrapper {
                         width: 100%; height: 100%; overflow-x: hidden; overflow-y: hidden;
@@ -150,10 +139,6 @@ object EpubParser {
                 </style>
             </head>
             <body>
-                <div id="footer-bar">
-                    <span id="page-info">-- / --</span>
-                </div>
-
                 <div id="content">
                     <div id="reader-wrapper" tabindex="0">
                         <div id="reader-text">$contentHtml</div>
@@ -362,22 +347,36 @@ object EpubParser {
                          }
                     }
                     
+                    function getProgressString() {
+                        const w = wrapper.clientWidth;
+                        const scrollW = wrapper.scrollWidth;
+                        if(w > 0) {
+                             const current = Math.ceil((wrapper.scrollLeft + 1) / w);
+                             const total = Math.ceil(scrollW / w) || 1;
+                             const maxScroll = scrollW - w;
+                             const pct = maxScroll > 0 ? Math.round((wrapper.scrollLeft / maxScroll) * 100) : 0;
+                             return current + ' / ' + total + ' (' + pct + '%)';
+                        }
+                        return "0 / 0 (0%)";
+                    }
+
                     function updateProgress() {
                         if (isResizing) return;
                         if (progressTimeout) clearTimeout(progressTimeout);
                         progressTimeout = setTimeout(() => {
-                            const w = wrapper.clientWidth;
-                            const scrollW = wrapper.scrollWidth;
-                            if(w > 0) {
-                                 const current = Math.ceil((wrapper.scrollLeft + 1) / w);
-                                 const total = Math.ceil(scrollW / w) || 1;
-                                 const maxScroll = scrollW - w;
-                                 const pct = maxScroll > 0 ? Math.round((wrapper.scrollLeft / maxScroll) * 100) : 0;
-                                 const text = current + ' / ' + total + ' (' + pct + '%)';
-                                 if(pageInfo) pageInfo.textContent = text;
-                            }
+                             const text = getProgressString();
+                             if(window.readerBridge && window.readerBridge.sendProgressInfo) {
+                                 window.readerBridge.sendProgressInfo(text);
+                             }
                         }, 50);
                     }
+
+                    window.requestProgressInfo = function() {
+                         const text = getProgressString();
+                         if(window.readerBridge && window.readerBridge.sendProgressInfo) {
+                             window.readerBridge.sendProgressInfo(text);
+                         }
+                    };
                     
                     window.readerRestore = function(s) {
                         const pct = parseFloat(s);
