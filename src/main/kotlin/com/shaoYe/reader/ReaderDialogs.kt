@@ -116,6 +116,7 @@ class SettingsDialog(project: Project, private val service: ReaderService) : Dia
 class SearchDialog(project: Project, private val service: ReaderService) : DialogWrapper(project, false, IdeModalityType.MODELESS) {
     private val listModel = DefaultListModel<String>()
     private val resultIds = mutableListOf<String>()
+    private val searchField = JBTextField()
 
     init {
         title = "Search"
@@ -126,12 +127,13 @@ class SearchDialog(project: Project, private val service: ReaderService) : Dialo
         SwingUtilities.invokeLater {
             listModel.clear()
             resultIds.clear()
+            
             if (results.isEmpty()) {
                 listModel.addElement("No results found.")
             } else {
                 results.forEach {
                     resultIds.add(it.first)
-                    listModel.addElement(it.second.replace(Regex("<.*?>"), "")) // Strip basic HTML tags if any
+                    listModel.addElement(it.second.replace(Regex("<.*?>"), ""))
                 }
             }
         }
@@ -140,7 +142,9 @@ class SearchDialog(project: Project, private val service: ReaderService) : Dialo
     override fun createCenterPanel(): JComponent {
         val panel = JPanel(BorderLayout())
 
-        val searchField = JBTextField()
+        val topPanel = JPanel(BorderLayout(5, 0))
+        topPanel.add(searchField, BorderLayout.CENTER)
+        panel.add(topPanel, BorderLayout.NORTH)
 
         var searchTimer: Timer? = null
         searchField.document.addDocumentListener(object : DocumentListener {
@@ -150,25 +154,26 @@ class SearchDialog(project: Project, private val service: ReaderService) : Dialo
 
             private fun scheduleSearch() {
                 searchTimer?.stop()
+                val query = searchField.text
+                if (query.isNotBlank()) {
+                    listModel.clear()
+                    listModel.addElement("Searching...")
+                    resultIds.clear()
+                }
+
                 searchTimer = Timer(300) {
-                    val query = searchField.text
-                    if (query.isNotBlank()) {
-                        listModel.clear()
-                        listModel.addElement("Searching...")
-                        resultIds.clear()
-                        service.performSearch(query)
+                    if (searchField.text.isNotBlank()) {
+                        service.performSearch(searchField.text)
                     } else {
                         listModel.clear()
                         resultIds.clear()
-                        service.performSearch("") // Clear highlights
+                        service.performSearch("") 
                     }
                 }
                 searchTimer?.isRepeats = false
                 searchTimer?.start()
             }
         })
-
-        panel.add(searchField, BorderLayout.NORTH)
 
         val list = JBList(listModel)
         list.addListSelectionListener {
@@ -181,7 +186,7 @@ class SearchDialog(project: Project, private val service: ReaderService) : Dialo
         }
 
         val scrollPane = JBScrollPane(list)
-        scrollPane.preferredSize = Dimension(350, 400)
+        scrollPane.preferredSize = Dimension(450, 400)
         panel.add(scrollPane, BorderLayout.CENTER)
 
         return panel

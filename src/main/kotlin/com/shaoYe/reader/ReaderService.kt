@@ -123,7 +123,6 @@ class ReaderService(private val project: Project) {
         jbCefBrowser.jbCefClient.addLoadHandler(object : CefLoadHandlerAdapter() {
             override fun onLoadEnd(browser: CefBrowser?, frame: CefFrame?, httpStatusCode: Int) {
                 if (frame?.isMain == true) {
-                    injectJsBridge(browser)
                     restoreProgress(browser)
                     
                     // Inject initial font size validation
@@ -168,9 +167,9 @@ class ReaderService(private val project: Project) {
         }
     }
 
-    private fun injectJsBridge(browser: CefBrowser?) {
-        if (browser == null) return // 增加空校验，消除后续冗余安全调用警告
-        val js = """
+    fun getBridgeJs(): String? {
+        if (openFileQuery == null) return null
+        return """
             window.readerBridge = {
                 openFile: function() { ${openFileQuery?.inject("''")} },
                 saveProgress: function(val) { ${saveProgressQuery?.inject("val")} },
@@ -181,8 +180,6 @@ class ReaderService(private val project: Project) {
                 sendProgressInfo: function(val) { ${progressInfoQuery?.inject("val")} }
             };
         """.trimIndent()
-        // 修复：既然 browser 已校验不为空，此处不再使用冗余的 ? 号
-        browser.executeJavaScript(js, browser.url, 0)
     }
 
     private fun restoreProgress(browser: CefBrowser?) {
@@ -226,7 +223,7 @@ class ReaderService(private val project: Project) {
                     // The default font size should be 2 font sizes smaller than the IDE editor default (-2).
                     val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize - 2)
 
-                    val loadResult = EpubParser.loadEpub(file, isDarcula, fontSize, savedTheme, savedFontFamily)
+                    val loadResult = EpubParser.loadEpub(file, isDarcula, fontSize, savedTheme, savedFontFamily, getBridgeJs())
                     currentTocItems = loadResult.toc
 
                     ApplicationManager.getApplication().invokeLater {

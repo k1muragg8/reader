@@ -11,10 +11,12 @@ import java.util.Locale
 
 object EpubParser {
 
-    private fun getAppHtml(contentHtml: String, colors: ThemeColors, fontSize: Int, theme: String?, fontFamily: String?): String {
+    private fun getAppHtml(contentHtml: String, colors: ThemeColors, fontSize: Int, theme: String?, fontFamily: String?, bridgeJs: String? = null): String {
         val actualTheme = theme ?: "white"
         val actualFontFamily = fontFamily ?: "sans"
         val cssFontFamily = if (actualFontFamily == "serif") "Palatino, \"Palatino Linotype\", \"Book Antiqua\", Georgia, serif" else "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
+
+        val bridgeScript = bridgeJs ?: ""
 
         return """
             <!DOCTYPE html>
@@ -133,8 +135,8 @@ object EpubParser {
                     img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 20px auto; border-radius: 8px; break-inside: avoid; }
                     
                     ::-webkit-scrollbar { display: none !important; }
-                    .search-highlight { background-color: #ffeb3b; color: #000; border-radius: 2px; box-shadow: 0 0 2px rgba(0,0,0,0.2); }
-                    .search-match { font-weight: bold; color: var(--icon-stroke); background: rgba(255, 235, 59, 0.3); }
+                    .search-highlight { background-color: #ffeb3b; color: #000; border-radius: 2px; }
+                    .active-match { background-color: #ff9800 !important; color: #fff !important; box-shadow: 0 0 4px rgba(0,0,0,0.4); }
 
                 </style>
             </head>
@@ -146,11 +148,18 @@ object EpubParser {
                 </div>
                 
                 <script>
+                    $bridgeScript
+                    
+                    // Global error handler
+                    window.onerror = function(msg, url, line, col, error) {
+                        if (window.readerBridge && window.readerBridge.sendSearchResults) {
+                            window.readerBridge.sendSearchResults("error|||JS Crash: " + msg + " at " + line + ":" + col);
+                        }
+                        return false;
+                    };
+
                     const wrapper = document.getElementById('reader-wrapper');
                     const textContainer = document.getElementById('reader-text');
-                    const pageInfo = document.getElementById('page-info');
-                    const sidebar = document.getElementById('sidebar');
-                    const backdrop = document.getElementById('sidebar-backdrop');
                     
                     // 状态锁
                     let isResizing = false;
@@ -163,84 +172,26 @@ object EpubParser {
                     let currentAnchorAbsoluteLeft = 0;
                     let allElements = [];
 
-                    const settingsPopover = document.getElementById('settings-popover');
-                    let wheelTimeout = null;
+                    let scrollLastTime = 0;
                     let lastWheelTime = 0;
 
                     window.onload = () => { 
+                         if (!textContainer || !wrapper) return;
                          // 缓存所有可能的锚点（包含列表项等）
                          allElements = Array.from(textContainer.querySelectorAll('p, h1, h2, h3, img, li, blockquote'));
                          updateLayout(); 
                          // 修复：初次加载时可能因为容器尺寸未就绪导致变形，延时再排版一次
                          setTimeout(updateLayout, 100);
-                         
                          wrapper.focus();
-                         // Bind Events
-                         document.getElementById('btn-chapters').addEventListener('click', toggleSidebar);
-                         document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
-                         backdrop.addEventListener('click', toggleSidebar);
-                         document.getElementById('btn-open').addEventListener('click', () => {
-                             if(window.readerBridge && typeof window.readerBridge.openFile === 'function') {
-                                 window.readerBridge.openFile();
-                             } else {
-                                 console.log("readerBridge or openFile is not available yet");
-                             }
-                         });
-                         
-                         document.getElementById('btn-settings').addEventListener('click', (e) => {
-                             e.stopPropagation();
-                             if (window.toggleSettings) window.toggleSettings();
-                         });
-
-                         document.addEventListener('click', (e) => {
-                             if (!settingsPopover.contains(e.target) && !document.getElementById('btn-settings').contains(e.target)) {
-                                 settingsPopover.classList.remove('open');
-                                 document.body.classList.remove('settings-open');
-                             }
-                         });
-
-                         // Theme Buttons
-                         document.querySelectorAll('.theme-btn').forEach(btn => {
-                             btn.addEventListener('click', () => {
-                                 const theme = btn.dataset.value;
-                                 document.documentElement.setAttribute('data-theme', theme);
-                                 if (window.readerBridge) window.readerBridge.saveTheme(theme);
-                             });
-                         });
-
-                         // Font Family Buttons
-                         document.querySelectorAll('.font-btn').forEach(btn => {
-                             btn.addEventListener('click', () => {
-                                 document.querySelectorAll('.font-btn').forEach(b => b.classList.remove('active'));
-                                 btn.classList.add('active');
-                                 const family = btn.dataset.value;
-                                 if (family === 'serif') {
-                                     document.documentElement.style.setProperty('--font-family', 'Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif');
-                                 } else {
-                                     document.documentElement.style.setProperty('--font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif');
-                                 }
-                                 if (window.readerBridge) window.readerBridge.saveFontFamily(family);
-                                 setTimeout(findCurrentAnchor, 100);
-                             });
-                         });
-
-                         // Zoom Controls from settings
-                         document.getElementById('btn-zoom-in').addEventListener('click', window.readerZoomIn);
-                         document.getElementById('btn-zoom-out').addEventListener('click', window.readerZoomOut);
-
-                         // Window Hover Logic for Toolbar
-                         document.documentElement.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
-                         document.documentElement.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
                     };
 
                     function updateLayout(width) {
+                        if (!wrapper || !textContainer) return;
                         const w = width || wrapper.clientWidth;
                         if(w > 0) {
                             textContainer.style.width = 'auto'; 
-                            // Set padding inside textContainer
                             textContainer.style.paddingLeft = '4px';
                             textContainer.style.paddingRight = '4px';
-                            // The actual usable width for a column is w minus the padding (4*2 = 8)
                             const usableWidth = w - 8;
                             textContainer.style.columnWidth = Math.max(usableWidth, 20) + 'px';
                             textContainer.style.columnGap = '8px';
@@ -378,7 +329,60 @@ object EpubParser {
                          }
                     };
                     
+                    function navNext() { 
+                        if (!wrapper) return;
+                        const w = wrapper.clientWidth;
+                        const idx = Math.ceil((wrapper.scrollLeft + 1) / w);
+                        wrapper.scrollTo({ left: idx * w, behavior: 'smooth' });
+                    }
+                    function navPrev() { 
+                        if (!wrapper) return;
+                        const w = wrapper.clientWidth;
+                        const idx = Math.ceil((wrapper.scrollLeft + 1) / w);
+                        wrapper.scrollTo({ left: (idx - 2) * w, behavior: 'smooth' });
+                    }
+
+                    window.scrollToId = function(id) {
+                         const el = document.getElementById(id);
+                         if(el) { 
+                             el.scrollIntoView(); 
+                         }
+                    };
+                    
+                    function getProgressString() {
+                        if (!wrapper) return "0 / 0 (0%)";
+                        const w = wrapper.clientWidth;
+                        const scrollW = wrapper.scrollWidth;
+                        if(w > 0) {
+                             const current = Math.ceil((wrapper.scrollLeft + 1) / w);
+                             const total = Math.ceil(scrollW / w) || 1;
+                             const maxScroll = scrollW - w;
+                             const pct = maxScroll > 0 ? Math.round((wrapper.scrollLeft / maxScroll) * 100) : 0;
+                             return current + ' / ' + total + ' (' + pct + '%)';
+                        }
+                        return "0 / 0 (0%)";
+                    }
+
+                    function updateProgress() {
+                        if (isResizing) return;
+                        if (progressTimeout) clearTimeout(progressTimeout);
+                        progressTimeout = setTimeout(() => {
+                             const text = getProgressString();
+                             if(window.readerBridge && window.readerBridge.sendProgressInfo) {
+                                 window.readerBridge.sendProgressInfo(text);
+                             }
+                        }, 50);
+                    }
+
+                    window.requestProgressInfo = function() {
+                         const text = getProgressString();
+                         if(window.readerBridge && window.readerBridge.sendProgressInfo) {
+                             window.readerBridge.sendProgressInfo(text);
+                         }
+                    };
+                    
                     window.readerRestore = function(s) {
+                        if (!wrapper) return;
                         const pct = parseFloat(s);
                         if(!isNaN(pct)) {
                             setTimeout(() => {
@@ -389,44 +393,31 @@ object EpubParser {
                         }
                     };
 
-                     document.addEventListener('keydown', function(e) {
-                          // Prevent A/D/Arrows when typing in inputs
-                          if (document.activeElement &&
-                             (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable)) {
-                              return; // do not trigger shortcuts if typing
-                          }
-
-                          const k = e.key;
-                          const lowerK = k.toLowerCase();
-                          
-                          // Map A/D and Arrow Keys to Pagination
-                          if (lowerK === 'a' || k === 'ArrowLeft') {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              navPrev();
-                          } else if (lowerK === 'd' || k === 'ArrowRight') {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              navNext();
-                          }
-                     });
+                    document.addEventListener('keydown', function(e) {
+                        if (document.activeElement &&
+                           (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable)) {
+                            return; 
+                        }
+                        const k = e.key;
+                        const lowerK = k.toLowerCase();
+                        if (lowerK === 'a' || k === 'ArrowLeft') {
+                            e.preventDefault(); e.stopPropagation(); navPrev();
+                        } else if (lowerK === 'd' || k === 'ArrowRight') {
+                            e.preventDefault(); e.stopPropagation(); navNext();
+                        }
+                    });
                     
-                    // Wheel Scrolling (Strictly translate vertical scroll wheel to page turns)
-                    wrapper.addEventListener('wheel', (e) => {
-                         // Prevent native scrolling completely for strict pagination control
-                         e.preventDefault();
-
-                         const now = Date.now();
-                         if (now - lastWheelTime > 300) { // Debounce threshold
-                             // Prefer deltaY (mouse wheel), fallback to deltaX (trackpad swipe)
-                             if (e.deltaY > 0 || e.deltaX > 0) {
-                                 navNext();
-                             } else if (e.deltaY < 0 || e.deltaX < 0) {
-                                 navPrev();
+                    if (wrapper) {
+                        wrapper.addEventListener('wheel', (e) => {
+                             e.preventDefault();
+                             const now = Date.now();
+                             if (now - lastWheelTime > 300) {
+                                 if (e.deltaY > 0 || e.deltaX > 0) { navNext(); }
+                                 else if (e.deltaY < 0 || e.deltaX < 0) { navPrev(); }
+                                 lastWheelTime = now;
                              }
-                             lastWheelTime = now;
-                         }
-                    }, { passive: false });
+                        }, { passive: false });
+                    }
 
                     window.readerNext = navNext; window.readerPrev = navPrev;
 
@@ -449,47 +440,8 @@ object EpubParser {
                             setTimeout(() => { updateLayout(); findCurrentAnchor(); }, 100);
                         }
                     };
-                    // --- Search Logic ---
-                    const searchSidebar = document.getElementById('search-sidebar');
-                    const searchInput = document.getElementById('search-input');
-                    const searchResults = document.getElementById('search-results');
+
                     let searchMatches = [];
-
-                    function toggleSearchSidebar() {
-                         searchSidebar.classList.toggle('open');
-                         if(searchSidebar.classList.contains('open')) {
-                             setTimeout(() => searchInput.focus(), 100);
-                             // If mobile/narrow, close chapter sidebar
-                             sidebar.classList.remove('open');
-                         }
-                    }
-                    window.toggleSearchSidebar = toggleSearchSidebar;
-
-                    window.toggleSettings = function() {
-                         settingsPopover.classList.toggle('open');
-                         if (settingsPopover.classList.contains('open')) {
-                             document.body.classList.add('settings-open');
-                         } else {
-                             document.body.classList.remove('settings-open');
-                         }
-                    };
-
-                    // Bind Search Events
-                    document.getElementById('btn-search').addEventListener('click', toggleSearchSidebar);
-                    document.getElementById('btn-close-search').addEventListener('click', toggleSearchSidebar);
-                    searchInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') performSearch(); });
-
-                    function clearHighlights() {
-                        if (!textContainer) return;
-                        const highlights = textContainer.querySelectorAll('.search-highlight');
-                        highlights.forEach(span => {
-                            const parent = span.parentNode;
-                            if (parent) {
-                                parent.replaceChild(document.createTextNode(span.textContent), span);
-                            }
-                        });
-                        textContainer.normalize();
-                    }
                     window.clearHighlights = clearHighlights;
 
                     window.performSearchFromNative = function(query) {
@@ -509,6 +461,11 @@ object EpubParser {
                             
                             setTimeout(() => {
                                 try {
+                                    if (!textContainer) {
+                                        finalResult = "error|||Text container not found (DOM error)";
+                                        return;
+                                    }
+                                    
                                     const filter = (window.NodeFilter && window.NodeFilter.SHOW_TEXT) || 4;
                                     const walker = document.createTreeWalker(textContainer, filter, null, false);
                                     let node;
@@ -523,12 +480,14 @@ object EpubParser {
                                     }
 
                                     let matchCount = 0;
+                                    const maxMatches = 500;
                                     const queryLower = query.toLowerCase();
                                     const queryLen = query.length;
 
-                                    textNodes.forEach(textNode => {
+                                    for (let textNode of textNodes) {
+                                        if (matchCount >= maxMatches) break;
                                         const text = textNode.nodeValue;
-                                        if (!text) return;
+                                        if (!text) continue;
                                         const textLower = text.toLowerCase();
                                         let startIndex = 0;
                                         let index;
@@ -537,11 +496,12 @@ object EpubParser {
                                         while ((index = textLower.indexOf(queryLower, startIndex)) !== -1) {
                                             matchesInNode.push(index);
                                             startIndex = index + queryLen;
+                                            if (matchCount + matchesInNode.length >= maxMatches) break;
                                         }
 
                                         if (matchesInNode.length > 0) {
                                             const parent = textNode.parentNode;
-                                            if (!parent) return;
+                                            if (!parent) continue;
                                             
                                             const frag = document.createDocumentFragment();
                                             let lastIdx = 0;
@@ -574,7 +534,7 @@ object EpubParser {
                                             frag.appendChild(document.createTextNode(text.substring(lastIdx)));
                                             parent.replaceChild(frag, textNode);
                                         }
-                                    });
+                                    }
 
                                     finalResult = searchMatches.map(m => m.id + "|||" + m.text).join("|||") || "NONE";
                                 } catch (e) {
@@ -593,21 +553,23 @@ object EpubParser {
                     };
 
                     window.jumpToMatch = function(id) {
+                         // Remove previous active match
+                         document.querySelectorAll('.active-match').forEach(el => el.classList.remove('active-match'));
+                         
                          const el = document.getElementById(id);
                          if(el) {
+                             el.classList.add('active-match');
+                             
                              const w = wrapper.clientWidth;
                              const rect = el.getBoundingClientRect();
+                             
+                             // Calculate absolute left in the entire scrollable area
                              const absoluteLeft = wrapper.scrollLeft + rect.left;
-                             const targetScroll = Math.floor((absoluteLeft - 4) / w) * w;
+                             
+                             // Calculate target column (assuming horizontal scrolling by page width)
+                             const targetScroll = Math.floor((absoluteLeft - 10) / w) * w;
+                             
                              wrapper.scrollTo({ left: targetScroll, behavior: 'auto' });
-                             
-                             const oldBg = el.style.backgroundColor;
-                             el.style.transition = 'background-color 0.5s ease';
-                             el.style.backgroundColor = '#ff9800';
-                             
-                             setTimeout(() => {
-                                 el.style.backgroundColor = oldBg || ''; 
-                             }, 500);
                          }
                     };
                 </script>
@@ -618,7 +580,7 @@ object EpubParser {
 
     data class EpubLoadResult(val html: String, val toc: List<TocItem>)
 
-    fun loadEpub(file: File, isDarcula: Boolean, fontSize: Int, theme: String? = null, fontFamily: String? = null): EpubLoadResult {
+    fun loadEpub(file: File, isDarcula: Boolean, fontSize: Int, theme: String? = null, fontFamily: String? = null, bridgeJs: String? = null): EpubLoadResult {
         val epubReader = EpubReader()
         val book = epubReader.readEpub(file.inputStream())
         val imageMap = mutableMapOf<String, String>()
@@ -664,11 +626,11 @@ object EpubParser {
             sb.append("<div id='spine-$chapterIndex' class='chapter'><div class='page-content'>${doc.body().html()}</div></div>")
         }
         val mappedToc = mapTocToSpineIds(tocItems, book)
-        val html = getAppHtml(sb.toString(), colors, fontSize, theme, fontFamily)
+        val html = getAppHtml(sb.toString(), colors, fontSize, theme, fontFamily, bridgeJs)
         return EpubLoadResult(html, mappedToc)
     }
 
-    fun getWelcomeHtml(isDarcula: Boolean, fontSize: Int, theme: String? = null, fontFamily: String? = null): String {
+    fun getWelcomeHtml(isDarcula: Boolean, fontSize: Int, theme: String? = null, fontFamily: String? = null, bridgeJs: String? = null): String {
         val colors = if (isDarcula) ThemeColors("#2b2d30", "#aaa", "rgba(43, 45, 48, 0.9)", "#4e5254", "#4c5052")
         else ThemeColors("#fff", "#333", "rgba(255, 255, 255, 0.9)", "#ddd", "#eee")
         val welcomeContent = """
@@ -683,7 +645,7 @@ object EpubParser {
                 </div>
             </div>
         """.trimIndent()
-        return getAppHtml(welcomeContent, colors, fontSize, theme, fontFamily)
+        return getAppHtml(welcomeContent, colors, fontSize, theme, fontFamily, bridgeJs)
     }
 
     private fun getMimeType(href: String): String? {
