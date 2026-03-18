@@ -126,8 +126,11 @@ class ReaderService(private val project: Project) {
                 restoreProgress(browser)
                 
                 // Inject initial font size validation
+                val props = PropertiesComponent.getInstance(project)
+                val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
                 val scheme = EditorColorsManager.getInstance().globalScheme
-                updateFontSize(scheme.editorFontSize)
+                val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 4)
+                updateFontSize(fontSize)
 
                 // Mark as ready to save progress after a short delay to ensure DOM is fully laid out
                 browser?.executeJavaScript("setTimeout(() => { window.isReadyToSave = true; }, 500);", browser.url, 0)
@@ -137,8 +140,11 @@ class ReaderService(private val project: Project) {
         // Listen for font size changes
         val connection = project.messageBus.connect()
         connection.subscribe(EditorColorsManager.TOPIC, EditorColorsListener {
+             val props = PropertiesComponent.getInstance(project)
+             val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
              val scheme = EditorColorsManager.getInstance().globalScheme
-             updateFontSize(scheme.editorFontSize)
+             val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 4)
+             updateFontSize(fontSize)
         })
 
         autoLoadLastBook()
@@ -215,7 +221,9 @@ class ReaderService(private val project: Project) {
                     val savedTheme = props.getValue(KEY_LAST_THEME)
                     val savedFontFamily = props.getValue(KEY_LAST_FONT_FAMILY)
                     val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
-                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: scheme.editorFontSize
+                    // The default font size should be 2 font sizes larger than the IDE editor default.
+                    // Usually each zoom level increments by 2px, so 2 zoom levels = +4.
+                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 4)
 
                     val loadResult = EpubParser.loadEpub(file, isDarcula, fontSize, savedTheme, savedFontFamily)
                     currentTocItems = loadResult.toc
