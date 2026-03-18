@@ -2,6 +2,7 @@ package com.shaoYe.reader
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.openapi.ui.DialogWrapper.IdeModalityType
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
@@ -112,7 +113,7 @@ class SettingsDialog(project: Project, private val service: ReaderService) : Dia
     override fun createActions() = emptyArray<Action>()
 }
 
-class SearchDialog(project: Project, private val service: ReaderService) : DialogWrapper(project, true) {
+class SearchDialog(project: Project, private val service: ReaderService) : DialogWrapper(project, false, IdeModalityType.MODELESS) {
     private val listModel = DefaultListModel<String>()
     private val resultIds = mutableListOf<String>()
 
