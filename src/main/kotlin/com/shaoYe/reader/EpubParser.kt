@@ -479,109 +479,13 @@ object EpubParser {
                     document.getElementById('btn-close-search').addEventListener('click', toggleSearchSidebar);
                     searchInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') performSearch(); });
 
-                    window.performSearchFromNative = function(query) {
-                        query = query.trim();
-                        if (!query) {
-                            if (window.readerBridge && window.readerBridge.sendSearchResults) {
-                                window.readerBridge.sendSearchResults("");
-                            }
-                            return;
-                        }
-
-                        // 1. Clear previous
-                        clearHighlights();
-                        searchMatches = [];
-
-                        // 2. Find matches (Text Node Traversal)
-                        setTimeout(() => {
-                            try {
-                                const regex = new RegExp(escapeRegex(query), 'gi');
-                                const walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
-                                let node;
-                                const nodesToReplace = [];
-
-                                while(node = walker.nextNode()) {
-                                    if (node.parentNode && (node.parentNode.tagName === 'SCRIPT' || node.parentNode.tagName === 'STYLE')) continue;
-                                    if (regex.test(node.nodeValue)) {
-                                        nodesToReplace.push(node);
-                                    }
-                                    regex.lastIndex = 0; // reset
-                                }
-
-                                // 3. Highlight and Collect
-                                let matchCount = 0;
-                                nodesToReplace.forEach(textNode => {
-                                    const text = textNode.nodeValue;
-                                    const parent = textNode.parentNode;
-                                    const frag = document.createDocumentFragment();
-                                    let lastIdx = 0;
-                                    let match;
-                                    regex.lastIndex = 0;
-
-                                    while ((match = regex.exec(text)) !== null) {
-                                        // Avoid infinite loops for zero-width matches
-                                        if (match.index === regex.lastIndex) regex.lastIndex++;
-
-                                        // Append text before match
-                                        frag.appendChild(document.createTextNode(text.substring(lastIdx, match.index)));
-
-                                        // Create highlight span
-                                        const span = document.createElement('span');
-                                        span.className = 'search-highlight';
-                                        span.id = 'search-match-' + matchCount;
-                                        span.textContent = match[0];
-                                        frag.appendChild(span);
-
-                                        // Collect result for sidebar
-                                        // Get snippet: 20 chars before and after
-                                        const start = Math.max(0, match.index - 20);
-                                        const end = Math.min(text.length, match.index + match[0].length + 20);
-                                        let snippet = text.substring(start, end).replace(new RegExp(escapeRegex(match[0]), 'gi'), `<b>${'$'}{match[0]}</b>`);
-                                        // Strip newlines to avoid breaking the Kotlin split later
-                                        snippet = snippet.replace(/[\r\n]+/g, ' ');
-
-                                        searchMatches.push({
-                                            id: 'search-match-' + matchCount,
-                                            text: '... ' + snippet + ' ...',
-                                        });
-
-                                        lastIdx = match.index + match[0].length;
-                                        matchCount++;
-                                    }
-                                    // Append remaining text
-                                    frag.appendChild(document.createTextNode(text.substring(lastIdx)));
-                                    parent.replaceChild(frag, textNode);
-                                });
-
-                                // Push to Kotlin
-                                if (window.readerBridge && window.readerBridge.sendSearchResults) {
-                                    const serialized = searchMatches.map(m => m.id + "|||" + m.text).join("|||");
-                                    window.readerBridge.sendSearchResults(serialized || "NONE"); // Send NONE if empty
-                                }
-                            } catch (e) {
-                                if (window.readerBridge && window.readerBridge.sendSearchResults) {
-                                    window.readerBridge.sendSearchResults("error|||" + e.toString());
-                                }
-                            }
-                        }, 50);
-                    };
-
-                    function escapeRegex(string) {
-                        return string.replace(/[.*+?^%${'$'}{}()|[\]\\]/g, '\\${'$'}&'); // ${'$'}& means the whole matched string
-                    }
-
                     function clearHighlights() {
-                        // Crucial: Restore original text nodes to avoid DOM explosion on repeated searches
-                        // Simple cleanup: remove spans, keep text. 
                         const highlights = textContainer.querySelectorAll('.search-highlight');
                         highlights.forEach(span => {
                             const parent = span.parentNode;
                             if (!parent) return;
                             const textNode = document.createTextNode(span.textContent);
                             parent.replaceChild(textNode, span);
-
-                            // Manually merge adjacent text nodes to fix the "split text node" issue
-                            // without calling parent.normalize() which might be destructive in EPUBs.
                             if (textNode.previousSibling && textNode.previousSibling.nodeType === 3) {
                                 textNode.nodeValue = textNode.previousSibling.nodeValue + textNode.nodeValue;
                                 parent.removeChild(textNode.previousSibling);
@@ -592,6 +496,95 @@ object EpubParser {
                             }
                         });
                     }
+
+                    window.performSearchFromNative = function(query) {
+                        query = query.trim();
+                        if (!query) {
+                            if (window.readerBridge && window.readerBridge.sendSearchResults) {
+                                window.readerBridge.sendSearchResults("");
+                            }
+                            return;
+                        }
+
+                        clearHighlights();
+                        searchMatches = [];
+
+                        setTimeout(() => {
+                            try {
+                                const walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
+                                let node;
+                                const textNodes = [];
+
+                                while(node = walker.nextNode()) {
+                                    if (node.parentNode && (node.parentNode.tagName === 'SCRIPT' || node.parentNode.tagName === 'STYLE')) continue;
+                                    if (node.nodeValue.trim() !== '') {
+                                        textNodes.push(node);
+                                    }
+                                }
+
+                                let matchCount = 0;
+                                const queryLower = query.toLowerCase();
+                                const queryLen = query.length;
+
+                                textNodes.forEach(textNode => {
+                                    const text = textNode.nodeValue;
+                                    const textLower = text.toLowerCase();
+                                    let startIndex = 0;
+                                    let index;
+                                    const matchesInNode = [];
+
+                                    while ((index = textLower.indexOf(queryLower, startIndex)) !== -1) {
+                                        matchesInNode.push(index);
+                                        startIndex = index + queryLen;
+                                    }
+
+                                    if (matchesInNode.length > 0) {
+                                        const parent = textNode.parentNode;
+                                        const frag = document.createDocumentFragment();
+                                        let lastIdx = 0;
+
+                                        for (let i = 0; i < matchesInNode.length; i++) {
+                                            const idx = matchesInNode[i];
+
+                                            frag.appendChild(document.createTextNode(text.substring(lastIdx, idx)));
+
+                                            const span = document.createElement('span');
+                                            span.className = 'search-highlight';
+                                            span.id = 'search-match-' + matchCount;
+                                            const actualMatchText = text.substring(idx, idx + queryLen);
+                                            span.textContent = actualMatchText;
+                                            frag.appendChild(span);
+
+                                            const start = Math.max(0, idx - 20);
+                                            const end = Math.min(text.length, idx + queryLen + 20);
+                                            let snippet = text.substring(start, idx) + "<b>" + actualMatchText + "</b>" + text.substring(idx + queryLen, end);
+                                            snippet = snippet.replace(/[\r\n]+/g, ' ');
+
+                                            searchMatches.push({
+                                                id: 'search-match-' + matchCount,
+                                                text: '... ' + snippet + ' ...',
+                                            });
+
+                                            lastIdx = idx + queryLen;
+                                            matchCount++;
+                                        }
+
+                                        frag.appendChild(document.createTextNode(text.substring(lastIdx)));
+                                        parent.replaceChild(frag, textNode);
+                                    }
+                                });
+
+                                const serialized = searchMatches.map(m => m.id + "|||" + m.text).join("|||");
+                                if (window.readerBridge && window.readerBridge.sendSearchResults) {
+                                    window.readerBridge.sendSearchResults(serialized || "NONE");
+                                }
+                            } catch (e) {
+                                if (window.readerBridge && window.readerBridge.sendSearchResults) {
+                                    window.readerBridge.sendSearchResults("error|||" + e.toString());
+                                }
+                            }
+                        }, 50);
+                    };
 
                     window.jumpToMatch = function(id) {
                          const el = document.getElementById(id);
