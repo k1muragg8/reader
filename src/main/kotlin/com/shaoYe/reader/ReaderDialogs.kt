@@ -118,9 +118,15 @@ class SearchDialog(project: Project, private val service: ReaderService) : Dialo
     private val resultIds = mutableListOf<String>()
     private val searchField = JBTextField()
 
+
+
     init {
         title = "Search"
         init()
+        setupActions()
+    }
+
+    private fun setupActions() {
     }
 
     fun updateResults(results: List<Pair<String, String>>) {

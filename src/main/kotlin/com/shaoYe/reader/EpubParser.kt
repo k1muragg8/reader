@@ -110,34 +110,22 @@ object EpubParser {
                     .icon-btn:hover { opacity: 1; background: var(--hover-bg); }
                     .icon-btn:active { transform: scale(0.95); }
 
-                    .feather { width: 16px; height: 16px; fill: none; stroke: var(--icon-stroke); stroke-width: 1.5px; }
-
-                    /* 极致紧贴边框，由外层容器强制给出顶部 4px 和底部 4px 留白 */
-                    #content { position: absolute; top: 4px; bottom: 4px; left: 0; right: 0; overflow: hidden; }
-
-                    #reader-wrapper {
-                        width: 100%; height: 100%; overflow-x: hidden; overflow-y: hidden;
-                        scroll-behavior: smooth; outline: none;
-                        user-select: none; /* Prevent accidental text drag when trying to pan */
-                    }
+                    body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-family); }
                     
-                    /* 去掉内层的高度影响，保证文字直接顶满整个内部高度 */
-                    #reader-text {
-                        /* By setting height to 100% and removing bottom padding, we align with the 4px absolute constraint of the #content wrapper */
-                        height: 100%; width: 100%; column-fill: auto;
-                        padding-top: 0; padding-bottom: 0; box-sizing: border-box;
-                    }
+                    #content { width: 100vw; height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+                    #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; scroll-snap-type: x mandatory; outline: none; transition: opacity 0.2s; }
+                    #reader-wrapper.resizing { scroll-snap-type: none; cursor: col-resize; opacity: 0.8; }
+                    #reader-text { height: 100%; padding: 5px 60px; column-fill: auto; position: relative; }
                     
                     .chapter { break-before: column; }
                     .page-content { padding: 0; margin: 0; width: 100%; box-sizing: border-box; }
                     h1, h2, h3, h4, h5, h6 { break-inside: avoid; break-after: avoid; }
-                    p { line-height: 1.6; margin-top: 0; margin-bottom: 0; text-indent: 1.5em; text-align: justify; font-size: var(--font-size); letter-spacing: 0.02em; }
+                    p { line-height: 1.6; margin: 0; text-indent: 1.5em; text-align: justify; font-size: var(--font-size); letter-spacing: 0.02em; }
                     img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 20px auto; border-radius: 8px; break-inside: avoid; }
                     
                     ::-webkit-scrollbar { display: none !important; }
                     .search-highlight { background-color: #ffeb3b; color: #000; border-radius: 2px; }
                     .active-match { background-color: #ff9800 !important; color: #fff !important; box-shadow: 0 0 4px rgba(0,0,0,0.4); }
-
                 </style>
             </head>
             <body>
@@ -150,7 +138,6 @@ object EpubParser {
                 <script>
                     $bridgeScript
                     
-                    // Global error handler
                     window.onerror = function(msg, url, line, col, error) {
                         if (window.readerBridge && window.readerBridge.sendSearchResults) {
                             window.readerBridge.sendSearchResults("error|||JS Crash: " + msg + " at " + line + ":" + col);
@@ -160,27 +147,20 @@ object EpubParser {
 
                     const wrapper = document.getElementById('reader-wrapper');
                     const textContainer = document.getElementById('reader-text');
-                    
-                    // 状态锁
-                    let isResizing = false;
-                    let resizeTimer = null;
-                    let saveTimeout = null;
-                    let progressTimeout = null;
-                    
-                    // 影子追踪器：记录当前视野中“最关键”的那个元素索引
-                    let currentAnchorIndex = 0;
-                    let currentAnchorAbsoluteLeft = 0;
                     let allElements = [];
 
-                    let scrollLastTime = 0;
+                    let isResizing = false;
+                    let resizeTimer = null;
+                    let currentAnchorIndex = 0;
+                    let currentAnchorAbsoluteLeft = 0;
                     let lastWheelTime = 0;
+                    let saveTimeout = null;
+                    let progressTimeout = null;
 
                     window.onload = () => { 
                          if (!textContainer || !wrapper) return;
-                         // 缓存所有可能的锚点（包含列表项等）
                          allElements = Array.from(textContainer.querySelectorAll('p, h1, h2, h3, img, li, blockquote'));
                          updateLayout(); 
-                         // 修复：初次加载时可能因为容器尺寸未就绪导致变形，延时再排版一次
                          setTimeout(updateLayout, 100);
                          wrapper.focus();
                     };
@@ -198,14 +178,13 @@ object EpubParser {
                         }
                     }
 
-                    // --- 1. 平时：精准记录“谁是主角” ---
                     wrapper.addEventListener('scroll', () => {
-                        if (isResizing) return; // 施工期间不记录
+                        if (isResizing) return;
                         updateProgress(); 
                         if(saveTimeout) clearTimeout(saveTimeout);
                         saveTimeout = setTimeout(() => {
-                            findCurrentAnchor(); // 记录锚点
-                            saveToBridge();      // 保存进度
+                            findCurrentAnchor();
+                            saveToBridge();
                         }, 200);
                     });
 
@@ -213,8 +192,7 @@ object EpubParser {
                         let bestIndex = 0;
                         let minDistance = Infinity;
                         for (let i = 0; i < allElements.length; i++) {
-                            const el = allElements[i];
-                            const rect = el.getBoundingClientRect();
+                            const rect = allElements[i].getBoundingClientRect();
                             if (rect.left >= 0 && rect.left < minDistance) {
                                 minDistance = rect.left;
                                 bestIndex = i;
@@ -223,60 +201,42 @@ object EpubParser {
                         currentAnchorIndex = bestIndex;
                     }
 
-                    // --- 2. 战时：无感冻结重排 ---
                     const observer = new ResizeObserver(entries => {
                         for(let entry of entries) {
                             const width = entry.contentRect.width;
                             if(width <= 0) continue;
-
-                            // A. 刚开始拖动：打麻醉
                             if (!isResizing) {
                                 isResizing = true;
-                                wrapper.classList.add('resizing'); // 杀掉动画和吸附
-
+                                wrapper.classList.add('resizing');
                                 const anchorEl = allElements[currentAnchorIndex];
                                 if (anchorEl) {
-                                    const rect = anchorEl.getBoundingClientRect();
-                                    currentAnchorAbsoluteLeft = wrapper.scrollLeft + rect.left;
+                                    currentAnchorAbsoluteLeft = wrapper.scrollLeft + anchorEl.getBoundingClientRect().left;
                                 }
                             }
-                            
-                            // B. 拖动中：实时计算但不乱跳
                             if(resizeTimer) clearTimeout(resizeTimer);
-                            
-                            // 更新布局列宽
                             updateLayout(width);
-
-                            // 强行纠偏：找到原来的主角在新舞台的位置
                             if (allElements[currentAnchorIndex]) {
                                 const newWidth = wrapper.clientWidth;
                                 const targetLeft = Math.floor(currentAnchorAbsoluteLeft / (newWidth || 1)) * newWidth;
                                 wrapper.scrollTo({left: targetLeft, behavior: 'instant'});
                             }
-
-                            // C. 拖动结束：200ms后解除麻醉
                             resizeTimer = setTimeout(() => {
                                 isResizing = false;
-                                wrapper.classList.remove('resizing'); // 恢复平滑和吸附
+                                wrapper.classList.remove('resizing');
                                 updateProgress();
                             }, 200);
                         }
                     });
                     observer.observe(wrapper);
 
-                    window.isReadyToSave = false;
-
                     function saveToBridge() {
-                        if(!window.isReadyToSave) return;
+                        if(!window.readerBridge) return;
                         const w = wrapper.clientWidth;
-                        if(w > 0 && window.readerBridge) {
-                            const maxScroll = wrapper.scrollWidth - w;
-                            const pct = maxScroll > 0 ? (wrapper.scrollLeft / maxScroll) : 0;
-                            window.readerBridge.saveProgress(pct.toString());
-                        }
+                        const maxScroll = wrapper.scrollWidth - w;
+                        const pct = maxScroll > 0 ? (wrapper.scrollLeft / maxScroll) : 0;
+                        window.readerBridge.saveProgress(pct.toString());
                     }
 
-                    // --- Navigation ---
                     function navNext() { 
                         const w = wrapper.clientWidth;
                         const idx = Math.ceil((wrapper.scrollLeft + 1) / w);
@@ -288,16 +248,6 @@ object EpubParser {
                         wrapper.scrollTo({ left: (idx - 2) * w, behavior: 'smooth' });
                     }
 
-                    function toggleSidebar() { sidebar.classList.toggle('open'); }
-                    window.toggleSidebar = toggleSidebar;
-                    function scrollToId(id) {
-                         const el = document.getElementById(id);
-                         if(el) { 
-                             el.scrollIntoView(); 
-                             if(sidebar.classList.contains('open')) toggleSidebar(); 
-                         }
-                    }
-                    
                     function getProgressString() {
                         const w = wrapper.clientWidth;
                         const scrollW = wrapper.scrollWidth;
@@ -323,101 +273,34 @@ object EpubParser {
                     }
 
                     window.requestProgressInfo = function() {
-                         const text = getProgressString();
-                         if(window.readerBridge && window.readerBridge.sendProgressInfo) {
-                             window.readerBridge.sendProgressInfo(text);
-                         }
-                    };
-                    
-                    function navNext() { 
-                        if (!wrapper) return;
-                        const w = wrapper.clientWidth;
-                        const idx = Math.ceil((wrapper.scrollLeft + 1) / w);
-                        wrapper.scrollTo({ left: idx * w, behavior: 'smooth' });
-                    }
-                    function navPrev() { 
-                        if (!wrapper) return;
-                        const w = wrapper.clientWidth;
-                        const idx = Math.ceil((wrapper.scrollLeft + 1) / w);
-                        wrapper.scrollTo({ left: (idx - 2) * w, behavior: 'smooth' });
-                    }
-
-                    window.scrollToId = function(id) {
-                         const el = document.getElementById(id);
-                         if(el) { 
-                             el.scrollIntoView(); 
-                         }
-                    };
-                    
-                    function getProgressString() {
-                        if (!wrapper) return "0 / 0 (0%)";
-                        const w = wrapper.clientWidth;
-                        const scrollW = wrapper.scrollWidth;
-                        if(w > 0) {
-                             const current = Math.ceil((wrapper.scrollLeft + 1) / w);
-                             const total = Math.ceil(scrollW / w) || 1;
-                             const maxScroll = scrollW - w;
-                             const pct = maxScroll > 0 ? Math.round((wrapper.scrollLeft / maxScroll) * 100) : 0;
-                             return current + ' / ' + total + ' (' + pct + '%)';
-                        }
-                        return "0 / 0 (0%)";
-                    }
-
-                    function updateProgress() {
-                        if (isResizing) return;
-                        if (progressTimeout) clearTimeout(progressTimeout);
-                        progressTimeout = setTimeout(() => {
-                             const text = getProgressString();
-                             if(window.readerBridge && window.readerBridge.sendProgressInfo) {
-                                 window.readerBridge.sendProgressInfo(text);
-                             }
-                        }, 50);
-                    }
-
-                    window.requestProgressInfo = function() {
-                         const text = getProgressString();
-                         if(window.readerBridge && window.readerBridge.sendProgressInfo) {
-                             window.readerBridge.sendProgressInfo(text);
-                         }
+                         if(window.readerBridge) window.readerBridge.sendProgressInfo(getProgressString());
                     };
                     
                     window.readerRestore = function(s) {
-                        if (!wrapper) return;
                         const pct = parseFloat(s);
                         if(!isNaN(pct)) {
                             setTimeout(() => {
-                                const maxScroll = wrapper.scrollWidth - wrapper.clientWidth;
-                                wrapper.scrollTo({ left: pct * maxScroll, behavior: 'instant' });
+                                wrapper.scrollTo({ left: pct * (wrapper.scrollWidth - wrapper.clientWidth), behavior: 'instant' });
                                 setTimeout(findCurrentAnchor, 200);
                             }, 300);
                         }
                     };
 
                     document.addEventListener('keydown', function(e) {
-                        if (document.activeElement &&
-                           (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable)) {
-                            return; 
-                        }
-                        const k = e.key;
-                        const lowerK = k.toLowerCase();
-                        if (lowerK === 'a' || k === 'ArrowLeft') {
-                            e.preventDefault(); e.stopPropagation(); navPrev();
-                        } else if (lowerK === 'd' || k === 'ArrowRight') {
-                            e.preventDefault(); e.stopPropagation(); navNext();
-                        }
+                        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+                        if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') { e.preventDefault(); navPrev(); }
+                        else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') { e.preventDefault(); navNext(); }
                     });
                     
-                    if (wrapper) {
-                        wrapper.addEventListener('wheel', (e) => {
-                             e.preventDefault();
-                             const now = Date.now();
-                             if (now - lastWheelTime > 300) {
-                                 if (e.deltaY > 0 || e.deltaX > 0) { navNext(); }
-                                 else if (e.deltaY < 0 || e.deltaX < 0) { navPrev(); }
-                                 lastWheelTime = now;
-                             }
-                        }, { passive: false });
-                    }
+                    wrapper.addEventListener('wheel', (e) => {
+                         e.preventDefault();
+                         const now = Date.now();
+                         if (now - lastWheelTime > 300) {
+                             if (e.deltaY > 0 || e.deltaX > 0) navNext();
+                             else if (e.deltaY < 0 || e.deltaX < 0) navPrev();
+                             lastWheelTime = now;
+                         }
+                    }, { passive: false });
 
                     window.readerNext = navNext; window.readerPrev = navPrev;
 
@@ -441,135 +324,96 @@ object EpubParser {
                         }
                     };
 
-                    let searchMatches = [];
-                    window.clearHighlights = clearHighlights;
+                    function clearHighlights() {
+                        const highlights = document.querySelectorAll('.search-highlight');
+                        highlights.forEach(span => {
+                            const parent = span.parentNode;
+                            if (parent) {
+                                parent.replaceChild(document.createTextNode(span.textContent), span);
+                                parent.normalize();
+                            }
+                        });
+                        searchMatches = [];
+                    }
 
+                    let searchMatches = [];
                     window.performSearchFromNative = function(query) {
                         let finalResult = "NONE";
                         try {
                             query = (query || "").trim();
                             if (!query) {
                                 clearHighlights();
-                                if (window.readerBridge && window.readerBridge.sendSearchResults) {
-                                    window.readerBridge.sendSearchResults("");
-                                }
+                                if (window.readerBridge) window.readerBridge.sendSearchResults("");
                                 return;
                             }
-
                             clearHighlights();
                             searchMatches = [];
-                            
-                            setTimeout(() => {
-                                try {
-                                    if (!textContainer) {
-                                        finalResult = "error|||Text container not found (DOM error)";
-                                        return;
-                                    }
-                                    
-                                    const filter = (window.NodeFilter && window.NodeFilter.SHOW_TEXT) || 4;
-                                    const walker = document.createTreeWalker(textContainer, filter, null, false);
-                                    let node;
-                                    const textNodes = [];
+                            const container = document.getElementById('reader-text');
+                            if (!container) return;
 
-                                    while(node = walker.nextNode()) {
-                                        const parent = node.parentNode;
-                                        if (parent && (parent.tagName === 'SCRIPT' || parent.tagName === 'STYLE')) continue;
-                                        if (node.nodeValue && node.nodeValue.trim() !== '') {
-                                            textNodes.push(node);
-                                        }
-                                    }
-
-                                    let matchCount = 0;
-                                    const maxMatches = 500;
-                                    const queryLower = query.toLowerCase();
-                                    const queryLen = query.length;
-
-                                    for (let textNode of textNodes) {
-                                        if (matchCount >= maxMatches) break;
-                                        const text = textNode.nodeValue;
-                                        if (!text) continue;
-                                        const textLower = text.toLowerCase();
-                                        let startIndex = 0;
-                                        let index;
-                                        const matchesInNode = [];
-
-                                        while ((index = textLower.indexOf(queryLower, startIndex)) !== -1) {
-                                            matchesInNode.push(index);
-                                            startIndex = index + queryLen;
-                                            if (matchCount + matchesInNode.length >= maxMatches) break;
-                                        }
-
-                                        if (matchesInNode.length > 0) {
-                                            const parent = textNode.parentNode;
-                                            if (!parent) continue;
-                                            
-                                            const frag = document.createDocumentFragment();
-                                            let lastIdx = 0;
-
-                                            for (let i = 0; i < matchesInNode.length; i++) {
-                                                const idx = matchesInNode[i];
-                                                frag.appendChild(document.createTextNode(text.substring(lastIdx, idx)));
-
-                                                const span = document.createElement('span');
-                                                span.className = 'search-highlight';
-                                                span.id = 'search-match-' + matchCount;
-                                                const actualMatchText = text.substring(idx, idx + queryLen);
-                                                span.textContent = actualMatchText;
-                                                frag.appendChild(span);
-
-                                                const start = Math.max(0, idx - 40);
-                                                const end = Math.min(text.length, idx + queryLen + 40);
-                                                let snippet = text.substring(start, idx) + "<b>" + actualMatchText + "</b>" + text.substring(idx + queryLen, end);
-                                                snippet = snippet.replace(/[\r\n\t]+/g, ' ').trim();
-
-                                                searchMatches.push({
-                                                    id: 'search-match-' + matchCount,
-                                                    text: (start > 0 ? '... ' : '') + snippet + (end < text.length ? ' ...' : ''),
-                                                });
-
-                                                lastIdx = idx + queryLen;
-                                                matchCount++;
-                                            }
-
-                                            frag.appendChild(document.createTextNode(text.substring(lastIdx)));
-                                            parent.replaceChild(frag, textNode);
-                                        }
-                                    }
-
-                                    finalResult = searchMatches.map(m => m.id + "|||" + m.text).join("|||") || "NONE";
-                                } catch (e) {
-                                    finalResult = "error|||" + e.toString();
-                                } finally {
-                                    if (window.readerBridge && window.readerBridge.sendSearchResults) {
-                                        window.readerBridge.sendSearchResults(finalResult);
-                                    }
-                                }
-                            }, 10);
-                        } catch (e) {
-                            if (window.readerBridge && window.readerBridge.sendSearchResults) {
-                                window.readerBridge.sendSearchResults("error|||Outer Error: " + e.toString());
+                            const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+                            let node;
+                            const textNodes = [];
+                            while(node = walker.nextNode()) {
+                                const p = node.parentNode;
+                                if (p && (p.tagName === 'SCRIPT' || p.tagName === 'STYLE')) continue;
+                                textNodes.push(node);
                             }
-                        }
+
+                            let matchCount = 0;
+                            const maxMatches = 500;
+                            const queryLower = query.toLowerCase();
+                            const queryLen = query.length;
+
+                            for (let textNode of textNodes) {
+                                if (matchCount >= maxMatches) break;
+                                const text = textNode.nodeValue;
+                                const textLower = text.toLowerCase();
+                                let startIndex = 0, index;
+                                const matchesInNode = [];
+                                while ((index = textLower.indexOf(queryLower, startIndex)) !== -1) {
+                                    matchesInNode.push(index);
+                                    startIndex = index + queryLen;
+                                    if (matchCount + matchesInNode.length >= maxMatches) break;
+                                }
+
+                                if (matchesInNode.length > 0) {
+                                    const parent = textNode.parentNode;
+                                    const frag = document.createDocumentFragment();
+                                    let lastIdx = 0;
+                                    for (let idx of matchesInNode) {
+                                        frag.appendChild(document.createTextNode(text.substring(lastIdx, idx)));
+                                        const span = document.createElement('span');
+                                        span.className = 'search-highlight';
+                                        span.id = 'search-match-' + matchCount;
+                                        span.textContent = text.substring(idx, idx + queryLen);
+                                        frag.appendChild(span);
+
+                                        const start = Math.max(0, idx - 40), end = Math.min(text.length, idx + queryLen + 40);
+                                        let snippet = text.substring(start, idx) + "<b>" + span.textContent + "</b>" + text.substring(idx + queryLen, end);
+                                        searchMatches.push({ id: span.id, text: (start > 0 ? '... ' : '') + snippet.replace(/\s+/g, ' ') + (end < text.length ? ' ...' : '') });
+                                        lastIdx = idx + queryLen;
+                                        matchCount++;
+                                    }
+                                    frag.appendChild(document.createTextNode(text.substring(lastIdx)));
+                                    parent.replaceChild(frag, textNode);
+                                }
+                            }
+                            finalResult = searchMatches.map(m => m.id + "|||" + m.text).join("|||") || "NONE";
+                        } catch (e) { finalResult = "error|||" + e.toString(); }
+                        finally { if (window.readerBridge) window.readerBridge.sendSearchResults(finalResult); }
                     };
 
                     window.jumpToMatch = function(id) {
-                         // Remove previous active match
                          document.querySelectorAll('.active-match').forEach(el => el.classList.remove('active-match'));
-                         
                          const el = document.getElementById(id);
                          if(el) {
                              el.classList.add('active-match');
-                             
-                             const w = wrapper.clientWidth;
+                             const container = document.getElementById('reader-wrapper');
+                             const w = container.clientWidth;
                              const rect = el.getBoundingClientRect();
-                             
-                             // Calculate absolute left in the entire scrollable area
-                             const absoluteLeft = wrapper.scrollLeft + rect.left;
-                             
-                             // Calculate target column (assuming horizontal scrolling by page width)
-                             const targetScroll = Math.floor((absoluteLeft - 10) / w) * w;
-                             
-                             wrapper.scrollTo({ left: targetScroll, behavior: 'auto' });
+                             const absoluteLeft = container.scrollLeft + rect.left;
+                             container.scrollTo({ left: Math.floor((absoluteLeft - 10) / (w || 1)) * w, behavior: 'auto' });
                          }
                     };
                 </script>
@@ -634,14 +478,35 @@ object EpubParser {
         val colors = if (isDarcula) ThemeColors("#2b2d30", "#aaa", "rgba(43, 45, 48, 0.9)", "#4e5254", "#4c5052")
         else ThemeColors("#fff", "#333", "rgba(255, 255, 255, 0.9)", "#ddd", "#eee")
         val welcomeContent = """
-            <div style='display:flex;flex-direction:column;height:100%;justify-content:center;align-items:center;opacity:0.6;text-align:center;padding:20px;gap:20px;' onclick="if(window.readerBridge && typeof window.readerBridge.openFile === 'function') window.readerBridge.openFile();">
-                <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; fill: none; stroke: currentColor; stroke-width: 1.5px; cursor: pointer;">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            <div style='display:flex;flex-direction:column;height:100%;justify-content:center;align-items:center;opacity:0.7;text-align:center;padding:40px;gap:25px;' onclick="if(window.readerBridge && typeof window.readerBridge.openFile === 'function') window.readerBridge.openFile();">
+                <svg viewBox="0 0 24 24" style="width: 64px; height: 64px; fill: none; stroke: currentColor; stroke-width: 1.2px; cursor: pointer; margin-bottom: 10px;">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
-                <div style="font-size: 16px; line-height: 1.8; cursor: pointer;">
-                    <div>Click the folder icon above or here to open an EPUB book</div>
-                    <div style="font-size: 14px; margin-top: 8px;">点击顶部的文件夹图标或此处打开 EPUB 书籍</div>
-                    <div style="font-size: 14px; margin-top: 8px;">上部のフォルダアイコンまたはここをクリックしてEPUBブックを開きます</div>
+                <div style="cursor: pointer;">
+                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v1.4.0</div>
+                    
+                    <div style="font-size: 14px; line-height: 1.8; margin-bottom: 20px;">
+                        <div style="font-weight: bold; color: var(--text);">New in this version:</div>
+                        <div>• Instant Search with Snippets & Direct Jump</div>
+                        <div>• Ultra-Narrow 5px Margins Layout</div>
+                    </div>
+                    
+                    <div style="font-size: 14px; line-height: 1.8; margin-bottom: 20px; opacity: 0.9;">
+                        <div style="font-weight: bold; color: var(--text);">新版本特性：</div>
+                        <div>• 实时搜索、片段预览与点击跳转</div>
+                        <div>• 极致的 5px 边缘贴合排版</div>
+                    </div>
+
+                    <div style="font-size: 14px; line-height: 1.8; opacity: 0.8;">
+                        <div style="font-weight: bold; color: var(--text);">新機能：</div>
+                        <div>• インスタント検索、スニペット表示とジャンプ</div>
+                        <div>• 極限まで広げた 5px ベゼルレイアウト</div>
+                    </div>
+                    
+                    <div style="font-size: 13px; margin-top: 30px; border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px;">
+                        Click anywhere to open an EPUB / 点击此处打开书籍 / クリックして開く
+                    </div>
                 </div>
             </div>
         """.trimIndent()

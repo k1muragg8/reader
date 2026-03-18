@@ -101,6 +101,9 @@ class ReaderService(private val project: Project) {
                 if (resultsStr.startsWith("error|||")) {
                     val errorMsg = resultsStr.removePrefix("error|||")
                     currentSearchDialog?.updateResults(listOf(Pair("error", "Error: $errorMsg")))
+                } else if (resultsStr.startsWith("info|||")) {
+                    val infoMsg = resultsStr.removePrefix("info|||")
+                    currentSearchDialog?.updateResults(listOf(Pair("info", "DIAGNOSTIC: $infoMsg")))
                 } else {
                     val items = resultsStr.split("|||")
                     val resultsList = items.chunked(2).mapNotNull {
@@ -287,12 +290,32 @@ class ReaderService(private val project: Project) {
     }
 
     fun performSearch(query: String) {
-        // Escape query slightly for JS string
-        val safeQuery = query.replace("'", "\\'").replace("\"", "\\\"").replace("\n", "\\n")
-        browser?.cefBrowser?.executeJavaScript("if(window.performSearchFromNative) window.performSearchFromNative('$safeQuery');", null, 0)
+        val escapedQuery = query.replace("\\", "\\\\").replace("'", "\\'")
+        browser?.cefBrowser?.executeJavaScript("if(window.performSearchFromNative) window.performSearchFromNative('$escapedQuery');", browser?.cefBrowser?.url, 0)
     }
 
     fun jumpToMatch(id: String) {
-        browser?.cefBrowser?.executeJavaScript("if(window.jumpToMatch) window.jumpToMatch('$id');", null, 0)
+        browser?.cefBrowser?.executeJavaScript("if(window.jumpToMatch) window.jumpToMatch('$id');", browser?.cefBrowser?.url, 0)
+    }
+
+    fun checkBridgeHealth() {
+        val js = """
+            (function() {
+                let status = [];
+                status.push("Bridge: " + (typeof window.readerBridge));
+                status.push("Search: " + (typeof window.performSearchFromNative));
+                status.push("Jump: " + (typeof window.jumpToMatch));
+                status.push("Container: " + (!!document.getElementById('reader-text')));
+                status.push("URL: " + window.location.href);
+                
+                if (window.readerBridge && window.readerBridge.sendSearchResults) {
+                    window.readerBridge.sendSearchResults("info|||" + status.join(" | "));
+                } else {
+                    // Fallback if bridge is totally broken
+                    console.error("CRITICAL: Bridge sendSearchResults is missing!");
+                }
+            })();
+        """.trimIndent()
+        browser?.cefBrowser?.executeJavaScript(js, browser?.cefBrowser?.url, 0)
     }
 }
