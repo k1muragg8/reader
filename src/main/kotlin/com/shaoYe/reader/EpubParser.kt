@@ -536,7 +536,7 @@ object EpubParser {
                                         // Get snippet: 20 chars before and after
                                         const start = Math.max(0, match.index - 20);
                                         const end = Math.min(text.length, match.index + match[0].length + 20);
-                                        let snippet = text.substring(start, end).replace(match[0], `<b>${'$'}{match[0]}</b>`);
+                                        let snippet = text.substring(start, end).replace(new RegExp(escapeRegex(match[0]), 'gi'), `<b>${'$'}{match[0]}</b>`);
                                         // Strip newlines to avoid breaking the Kotlin split later
                                         snippet = snippet.replace(/[\r\n]+/g, ' ');
 
@@ -566,13 +566,30 @@ object EpubParser {
                         }, 50);
                     };
 
+                    function escapeRegex(string) {
+                        return string.replace(/[.*+?^%${'$'}{}()|[\]\\]/g, '\\${'$'}&'); // ${'$'}& means the whole matched string
+                    }
+
                     function clearHighlights() {
                         // Crucial: Restore original text nodes to avoid DOM explosion on repeated searches
                         // Simple cleanup: remove spans, keep text. 
                         const highlights = textContainer.querySelectorAll('.search-highlight');
                         highlights.forEach(span => {
                             const parent = span.parentNode;
-                            parent.replaceChild(document.createTextNode(span.textContent), span);
+                            if (!parent) return;
+                            const textNode = document.createTextNode(span.textContent);
+                            parent.replaceChild(textNode, span);
+
+                            // Manually merge adjacent text nodes to fix the "split text node" issue
+                            // without calling parent.normalize() which might be destructive in EPUBs.
+                            if (textNode.previousSibling && textNode.previousSibling.nodeType === 3) {
+                                textNode.nodeValue = textNode.previousSibling.nodeValue + textNode.nodeValue;
+                                parent.removeChild(textNode.previousSibling);
+                            }
+                            if (textNode.nextSibling && textNode.nextSibling.nodeType === 3) {
+                                textNode.nodeValue = textNode.nodeValue + textNode.nextSibling.nodeValue;
+                                parent.removeChild(textNode.nextSibling);
+                            }
                         });
                     }
 
@@ -596,10 +613,6 @@ object EpubParser {
                              }, 500);
                          }
                     };
-
-                    function escapeRegex(string) {
-                        return string.replace(/[.*+?^%${'$'}{}()|[\]\\]/g, '\\${'$'}&'); // ${'$'}& means the whole matched string
-                    }
                 </script>
             </body>
             </html>
