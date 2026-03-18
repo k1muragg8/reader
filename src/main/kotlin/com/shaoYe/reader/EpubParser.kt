@@ -498,16 +498,23 @@ object EpubParser {
                     }
 
                     window.performSearchFromNative = function(query) {
-                        query = query.trim();
-                        if (!query) {
+                        try {
+                            query = query.trim();
+                            if (!query) {
+                                if (window.readerBridge && window.readerBridge.sendSearchResults) {
+                                    window.readerBridge.sendSearchResults("");
+                                }
+                                return;
+                            }
+
+                            clearHighlights();
+                            searchMatches = [];
+                        } catch (e) {
                             if (window.readerBridge && window.readerBridge.sendSearchResults) {
-                                window.readerBridge.sendSearchResults("");
+                                window.readerBridge.sendSearchResults("error|||Init Error: " + e.toString());
                             }
                             return;
                         }
-
-                        clearHighlights();
-                        searchMatches = [];
 
                         setTimeout(() => {
                             try {

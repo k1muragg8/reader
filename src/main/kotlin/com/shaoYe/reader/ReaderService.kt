@@ -129,7 +129,7 @@ class ReaderService(private val project: Project) {
                 val props = PropertiesComponent.getInstance(project)
                 val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
                 val scheme = EditorColorsManager.getInstance().globalScheme
-                val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 4)
+                val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 2)
                 updateFontSize(fontSize)
 
                 // Mark as ready to save progress after a short delay to ensure DOM is fully laid out
@@ -143,7 +143,7 @@ class ReaderService(private val project: Project) {
              val props = PropertiesComponent.getInstance(project)
              val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
              val scheme = EditorColorsManager.getInstance().globalScheme
-             val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 4)
+             val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 2)
              updateFontSize(fontSize)
         })
 
@@ -221,9 +221,8 @@ class ReaderService(private val project: Project) {
                     val savedTheme = props.getValue(KEY_LAST_THEME)
                     val savedFontFamily = props.getValue(KEY_LAST_FONT_FAMILY)
                     val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
-                    // The default font size should be 2 font sizes larger than the IDE editor default.
-                    // Usually each zoom level increments by 2px, so 2 zoom levels = +4.
-                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 4)
+                    // The default font size should be 1 font size larger than the IDE editor default (+2).
+                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 2)
 
                     val loadResult = EpubParser.loadEpub(file, isDarcula, fontSize, savedTheme, savedFontFamily)
                     currentTocItems = loadResult.toc
