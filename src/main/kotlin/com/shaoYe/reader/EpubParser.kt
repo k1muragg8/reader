@@ -480,27 +480,24 @@ object EpubParser {
                     searchInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') performSearch(); });
 
                     function clearHighlights() {
+                        if (!textContainer) return;
                         const highlights = textContainer.querySelectorAll('.search-highlight');
                         highlights.forEach(span => {
                             const parent = span.parentNode;
-                            if (!parent) return;
-                            const textNode = document.createTextNode(span.textContent);
-                            parent.replaceChild(textNode, span);
-                            if (textNode.previousSibling && textNode.previousSibling.nodeType === 3) {
-                                textNode.nodeValue = textNode.previousSibling.nodeValue + textNode.nodeValue;
-                                parent.removeChild(textNode.previousSibling);
-                            }
-                            if (textNode.nextSibling && textNode.nextSibling.nodeType === 3) {
-                                textNode.nodeValue = textNode.nodeValue + textNode.nextSibling.nodeValue;
-                                parent.removeChild(textNode.nextSibling);
+                            if (parent) {
+                                parent.replaceChild(document.createTextNode(span.textContent), span);
                             }
                         });
+                        textContainer.normalize();
                     }
+                    window.clearHighlights = clearHighlights;
 
                     window.performSearchFromNative = function(query) {
+                        let finalResult = "NONE";
                         try {
-                            query = query.trim();
+                            query = (query || "").trim();
                             if (!query) {
+                                clearHighlights();
                                 if (window.readerBridge && window.readerBridge.sendSearchResults) {
                                     window.readerBridge.sendSearchResults("");
                                 }
@@ -509,88 +506,90 @@ object EpubParser {
 
                             clearHighlights();
                             searchMatches = [];
-                        } catch (e) {
-                            if (window.readerBridge && window.readerBridge.sendSearchResults) {
-                                window.readerBridge.sendSearchResults("error|||Init Error: " + e.toString());
-                            }
-                            return;
-                        }
+                            
+                            setTimeout(() => {
+                                try {
+                                    const filter = (window.NodeFilter && window.NodeFilter.SHOW_TEXT) || 4;
+                                    const walker = document.createTreeWalker(textContainer, filter, null, false);
+                                    let node;
+                                    const textNodes = [];
 
-                        setTimeout(() => {
-                            try {
-                                const walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
-                                let node;
-                                const textNodes = [];
-
-                                while(node = walker.nextNode()) {
-                                    if (node.parentNode && (node.parentNode.tagName === 'SCRIPT' || node.parentNode.tagName === 'STYLE')) continue;
-                                    if (node.nodeValue.trim() !== '') {
-                                        textNodes.push(node);
-                                    }
-                                }
-
-                                let matchCount = 0;
-                                const queryLower = query.toLowerCase();
-                                const queryLen = query.length;
-
-                                textNodes.forEach(textNode => {
-                                    const text = textNode.nodeValue;
-                                    const textLower = text.toLowerCase();
-                                    let startIndex = 0;
-                                    let index;
-                                    const matchesInNode = [];
-
-                                    while ((index = textLower.indexOf(queryLower, startIndex)) !== -1) {
-                                        matchesInNode.push(index);
-                                        startIndex = index + queryLen;
+                                    while(node = walker.nextNode()) {
+                                        const parent = node.parentNode;
+                                        if (parent && (parent.tagName === 'SCRIPT' || parent.tagName === 'STYLE')) continue;
+                                        if (node.nodeValue && node.nodeValue.trim() !== '') {
+                                            textNodes.push(node);
+                                        }
                                     }
 
-                                    if (matchesInNode.length > 0) {
-                                        const parent = textNode.parentNode;
-                                        const frag = document.createDocumentFragment();
-                                        let lastIdx = 0;
+                                    let matchCount = 0;
+                                    const queryLower = query.toLowerCase();
+                                    const queryLen = query.length;
 
-                                        for (let i = 0; i < matchesInNode.length; i++) {
-                                            const idx = matchesInNode[i];
+                                    textNodes.forEach(textNode => {
+                                        const text = textNode.nodeValue;
+                                        if (!text) return;
+                                        const textLower = text.toLowerCase();
+                                        let startIndex = 0;
+                                        let index;
+                                        const matchesInNode = [];
 
-                                            frag.appendChild(document.createTextNode(text.substring(lastIdx, idx)));
-
-                                            const span = document.createElement('span');
-                                            span.className = 'search-highlight';
-                                            span.id = 'search-match-' + matchCount;
-                                            const actualMatchText = text.substring(idx, idx + queryLen);
-                                            span.textContent = actualMatchText;
-                                            frag.appendChild(span);
-
-                                            const start = Math.max(0, idx - 20);
-                                            const end = Math.min(text.length, idx + queryLen + 20);
-                                            let snippet = text.substring(start, idx) + "<b>" + actualMatchText + "</b>" + text.substring(idx + queryLen, end);
-                                            snippet = snippet.replace(/[\r\n]+/g, ' ');
-
-                                            searchMatches.push({
-                                                id: 'search-match-' + matchCount,
-                                                text: '... ' + snippet + ' ...',
-                                            });
-
-                                            lastIdx = idx + queryLen;
-                                            matchCount++;
+                                        while ((index = textLower.indexOf(queryLower, startIndex)) !== -1) {
+                                            matchesInNode.push(index);
+                                            startIndex = index + queryLen;
                                         }
 
-                                        frag.appendChild(document.createTextNode(text.substring(lastIdx)));
-                                        parent.replaceChild(frag, textNode);
-                                    }
-                                });
+                                        if (matchesInNode.length > 0) {
+                                            const parent = textNode.parentNode;
+                                            if (!parent) return;
+                                            
+                                            const frag = document.createDocumentFragment();
+                                            let lastIdx = 0;
 
-                                const serialized = searchMatches.map(m => m.id + "|||" + m.text).join("|||");
-                                if (window.readerBridge && window.readerBridge.sendSearchResults) {
-                                    window.readerBridge.sendSearchResults(serialized || "NONE");
+                                            for (let i = 0; i < matchesInNode.length; i++) {
+                                                const idx = matchesInNode[i];
+                                                frag.appendChild(document.createTextNode(text.substring(lastIdx, idx)));
+
+                                                const span = document.createElement('span');
+                                                span.className = 'search-highlight';
+                                                span.id = 'search-match-' + matchCount;
+                                                const actualMatchText = text.substring(idx, idx + queryLen);
+                                                span.textContent = actualMatchText;
+                                                frag.appendChild(span);
+
+                                                const start = Math.max(0, idx - 40);
+                                                const end = Math.min(text.length, idx + queryLen + 40);
+                                                let snippet = text.substring(start, idx) + "<b>" + actualMatchText + "</b>" + text.substring(idx + queryLen, end);
+                                                snippet = snippet.replace(/[\r\n\t]+/g, ' ').trim();
+
+                                                searchMatches.push({
+                                                    id: 'search-match-' + matchCount,
+                                                    text: (start > 0 ? '... ' : '') + snippet + (end < text.length ? ' ...' : ''),
+                                                });
+
+                                                lastIdx = idx + queryLen;
+                                                matchCount++;
+                                            }
+
+                                            frag.appendChild(document.createTextNode(text.substring(lastIdx)));
+                                            parent.replaceChild(frag, textNode);
+                                        }
+                                    });
+
+                                    finalResult = searchMatches.map(m => m.id + "|||" + m.text).join("|||") || "NONE";
+                                } catch (e) {
+                                    finalResult = "error|||" + e.toString();
+                                } finally {
+                                    if (window.readerBridge && window.readerBridge.sendSearchResults) {
+                                        window.readerBridge.sendSearchResults(finalResult);
+                                    }
                                 }
-                            } catch (e) {
-                                if (window.readerBridge && window.readerBridge.sendSearchResults) {
-                                    window.readerBridge.sendSearchResults("error|||" + e.toString());
-                                }
+                            }, 10);
+                        } catch (e) {
+                            if (window.readerBridge && window.readerBridge.sendSearchResults) {
+                                window.readerBridge.sendSearchResults("error|||Outer Error: " + e.toString());
                             }
-                        }, 50);
+                        }
                     };
 
                     window.jumpToMatch = function(id) {
@@ -599,14 +598,12 @@ object EpubParser {
                              const w = wrapper.clientWidth;
                              const rect = el.getBoundingClientRect();
                              const absoluteLeft = wrapper.scrollLeft + rect.left;
-                             // Calculate the start of the column/page, minus the 4px padding so we don't skew by a column
                              const targetScroll = Math.floor((absoluteLeft - 4) / w) * w;
                              wrapper.scrollTo({ left: targetScroll, behavior: 'auto' });
                              
-                             // Flash effect (background color)
                              const oldBg = el.style.backgroundColor;
                              el.style.transition = 'background-color 0.5s ease';
-                             el.style.backgroundColor = '#ff9800'; // Orange flash
+                             el.style.backgroundColor = '#ff9800';
                              
                              setTimeout(() => {
                                  el.style.backgroundColor = oldBg || ''; 

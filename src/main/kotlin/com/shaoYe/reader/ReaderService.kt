@@ -122,18 +122,20 @@ class ReaderService(private val project: Project) {
 
         jbCefBrowser.jbCefClient.addLoadHandler(object : CefLoadHandlerAdapter() {
             override fun onLoadEnd(browser: CefBrowser?, frame: CefFrame?, httpStatusCode: Int) {
-                injectJsBridge(browser)
-                restoreProgress(browser)
-                
-                // Inject initial font size validation
-                val props = PropertiesComponent.getInstance(project)
-                val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
-                val scheme = EditorColorsManager.getInstance().globalScheme
-                val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 2)
-                updateFontSize(fontSize)
+                if (frame?.isMain == true) {
+                    injectJsBridge(browser)
+                    restoreProgress(browser)
+                    
+                    // Inject initial font size validation
+                    val props = PropertiesComponent.getInstance(project)
+                    val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
+                    val scheme = EditorColorsManager.getInstance().globalScheme
+                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize - 2)
+                    updateFontSize(fontSize)
 
-                // Mark as ready to save progress after a short delay to ensure DOM is fully laid out
-                browser?.executeJavaScript("setTimeout(() => { window.isReadyToSave = true; }, 500);", browser.url, 0)
+                    // Mark as ready to save progress after a short delay to ensure DOM is fully laid out
+                    browser?.executeJavaScript("setTimeout(() => { window.isReadyToSave = true; }, 500);", browser.url, 0)
+                }
             }
         }, jbCefBrowser.cefBrowser)
 
@@ -143,7 +145,7 @@ class ReaderService(private val project: Project) {
              val props = PropertiesComponent.getInstance(project)
              val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
              val scheme = EditorColorsManager.getInstance().globalScheme
-             val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 2)
+             val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize - 2)
              updateFontSize(fontSize)
         })
 
@@ -221,8 +223,8 @@ class ReaderService(private val project: Project) {
                     val savedTheme = props.getValue(KEY_LAST_THEME)
                     val savedFontFamily = props.getValue(KEY_LAST_FONT_FAMILY)
                     val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
-                    // The default font size should be 1 font size larger than the IDE editor default (+2).
-                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 2)
+                    // The default font size should be 2 font sizes smaller than the IDE editor default (-2).
+                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize - 2)
 
                     val loadResult = EpubParser.loadEpub(file, isDarcula, fontSize, savedTheme, savedFontFamily)
                     currentTocItems = loadResult.toc

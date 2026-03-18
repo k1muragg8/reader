@@ -36,7 +36,7 @@ class EpubToolWindowFactory : ToolWindowFactory, DumbAware {
         val savedTheme = props.getValue("READER_MASTER_LAST_THEME")
         val savedFontFamily = props.getValue("READER_MASTER_LAST_FONT_FAMILY")
         val savedFontSizeStr = props.getValue("READER_MASTER_LAST_FONT_SIZE")
-        val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 2)
+        val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize - 2)
 
         browser.loadHTML(EpubParser.getWelcomeHtml(isDarcula, fontSize, savedTheme, savedFontFamily))
 
