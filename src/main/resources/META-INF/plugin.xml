@@ -44,6 +44,12 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <h3>Version 1.4.2 - Focus-based Stealth Mode</h3>
+    <ul>
+        <li><b>Concentration Mode</b>: Text content now automatically hides (becomes transparent) when the reader window loses focus. Ideal for maintaining privacy when switching tasks.</li>
+        <li><b>Instant Restore</b>: Content instantly reappears as soon as you click back into the reader.</li>
+    </ul>
+
     <h3>Version 1.4.1 - Privacy & Stealth</h3>
     <ul>
         <li><b>Hidden Title</b>: The tool window title can now be set to empty (or a space) to hide the plugin more effectively. Perfect for "fishing" during work.</li>

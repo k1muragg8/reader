@@ -493,24 +493,24 @@ object EpubParser {
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
                 <div style="cursor: pointer;">
-                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v1.4.0</div>
+                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v1.4.2</div>
                     
                     <div style="font-size: 14px; line-height: 1.8; margin-bottom: 20px;">
                         <div style="font-weight: bold; color: var(--text);">New in this version:</div>
+                        <div>• Concentration Mode (Auto-hide on focus loss)</div>
                         <div>• Instant Search with Snippets & Direct Jump</div>
-                        <div>• Ultra-Narrow 5px Margins Layout</div>
                     </div>
                     
                     <div style="font-size: 14px; line-height: 1.8; margin-bottom: 20px; opacity: 0.9;">
                         <div style="font-weight: bold; color: var(--text);">新版本特性：</div>
+                        <div>• 隐私隐匿专注模式 (失去焦点自动隐藏)</div>
                         <div>• 实时搜索、片段预览与点击跳转</div>
-                        <div>• 极致的 5px 边缘贴合排版</div>
                     </div>
 
                     <div style="font-size: 14px; line-height: 1.8; opacity: 0.8;">
                         <div style="font-weight: bold; color: var(--text);">新機能：</div>
+                        <div>• 集中モード (フォーカス喪失時に自動的に非表示)</div>
                         <div>• インスタント検索、スニペット表示とジャンプ</div>
-                        <div>• 極限まで広げた 5px ベゼルレイアウト</div>
                     </div>
                     
                     <div style="font-size: 13px; margin-top: 30px; border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px;">
