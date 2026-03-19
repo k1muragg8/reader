@@ -44,6 +44,12 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <h3>Version 1.4.1 - Privacy & Stealth</h3>
+    <ul>
+        <li><b>Hidden Title</b>: The tool window title can now be set to empty (or a space) to hide the plugin more effectively. Perfect for "fishing" during work.</li>
+        <li><b>UX Polish</b>: Removed unnecessary console logging for a cleaner experience.</li>
+    </ul>
+
     <h3>Version 1.4.0 - Search & Layout Overhaul</h3>
     <ul>
         <li><b>New Search Engine</b>: Implemented a lightning-fast, real-time search engine. Search as you type and see relevant context snippets immediately.</li>
@@ -85,7 +91,7 @@ legantly integrated into the native IntelliJ Tool Window header bar.</li>
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="ReaderMaster" secondary="true" icon="/icons/magicBook.svg" anchor="right"
+        <toolWindow id=" " secondary="true" icon="/icons/magicBook.svg" anchor="right"
                     factoryClass="com.shaoYe.reader.EpubToolWindowFactory"/>
         <projectService serviceImplementation="com.shaoYe.reader.ReaderService"/>
     </extensions>

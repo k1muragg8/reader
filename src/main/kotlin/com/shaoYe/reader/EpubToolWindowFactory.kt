@@ -13,7 +13,6 @@ import javax.swing.JPanel
 class EpubToolWindowFactory : ToolWindowFactory, DumbAware {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        println("Plugin Reader Master successfully loaded!")
 
         val readerService = ReaderService.getInstance(project)
 
