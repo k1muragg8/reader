@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.shaoYe.reader"
-version = "1.4.2"
+version = "1.4.3"
 
 repositories {
     mavenCentral()
