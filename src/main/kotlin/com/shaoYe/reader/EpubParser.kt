@@ -126,6 +126,10 @@ object EpubParser {
                     ::-webkit-scrollbar { display: none !important; }
                     .search-highlight { background-color: #ffeb3b; color: #000; border-radius: 2px; }
                     .active-match { background-color: #ff9800 !important; color: #fff !important; box-shadow: 0 0 4px rgba(0,0,0,0.4); }
+
+                    /* --- 隐私与隐匿功能：焦点失焦时隐藏内容 --- */
+                    #reader-text { transition: opacity 0.15s ease-in-out; }
+                    body.focus-lost #reader-text { opacity: 0 !important; }
                 </style>
             </head>
             <body>
@@ -137,6 +141,11 @@ object EpubParser {
                 
                 <script>
                     $bridgeScript
+
+                    /* --- 焦点监听：用于隐匿内容 --- */
+                    window.addEventListener('blur', () => { document.body.classList.add('focus-lost'); });
+                    window.addEventListener('focus', () => { document.body.classList.remove('focus-lost'); });
+                    if (!document.hasFocus()) { document.body.classList.add('focus-lost'); }
                     
                     window.onerror = function(msg, url, line, col, error) {
                         if (window.readerBridge && window.readerBridge.sendSearchResults) {
