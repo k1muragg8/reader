@@ -44,6 +44,11 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <h3>Version 1.4.4 - Synchronization & Stealth</h3>
+    <ul>
+        <li><b>Perfect Synchronization</b>: Removed fade animation for focus loss to perfectly synchronize with native tool window title actions for the ultimate stealth experience.</li>
+    </ul>
+
     <h3>Version 1.4.3 - Responsive Privacy</h3>
     <ul>
         <li><b>Enhanced Responsiveness</b>: Doubled the content disappearance speed (0.15s -> 0.08s) for near-instant stealth when switching focus.</li>
