@@ -420,7 +420,10 @@ object EpubParser {
                     }
 
                     window.scrollToId = function(id) {
-                         var el = document.getElementById(id) || document.querySelector('[id="' + id + '"]');
+                         var el = document.getElementById(id);
+                         if (!el) {
+                             try { el = document.querySelector('[id="' + CSS.escape(id) + '"]'); } catch(e) {}
+                         }
                          if(el) {
                              forceBreakBefore(el);
                              setTimeout(function() {
