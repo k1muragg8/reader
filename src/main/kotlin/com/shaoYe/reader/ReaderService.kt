@@ -303,7 +303,8 @@ class ReaderService(private val project: Project) {
     }
 
     fun scrollToId(id: String) {
-        browser?.cefBrowser?.executeJavaScript("if(window.scrollToId) window.scrollToId('$id');", null, 0)
+        val escapedId = id.replace("\\", "\\\\").replace("'", "\\'")
+        browser?.cefBrowser?.executeJavaScript("if(window.scrollToId) window.scrollToId('$escapedId');", null, 0)
     }
 
     fun performSearch(query: String) {
@@ -312,7 +313,8 @@ class ReaderService(private val project: Project) {
     }
 
     fun jumpToMatch(id: String) {
-        browser?.cefBrowser?.executeJavaScript("if(window.jumpToMatch) window.jumpToMatch('$id');", browser?.cefBrowser?.url, 0)
+        val escapedId = id.replace("\\", "\\\\").replace("'", "\\'")
+        browser?.cefBrowser?.executeJavaScript("if(window.jumpToMatch) window.jumpToMatch('$escapedId');", browser?.cefBrowser?.url, 0)
     }
 
     fun checkBridgeHealth() {
