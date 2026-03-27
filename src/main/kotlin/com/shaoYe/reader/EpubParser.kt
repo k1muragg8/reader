@@ -78,7 +78,7 @@ object EpubParser {
                     }
 
 
-                    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-family); }
+                    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-family); font-size: var(--font-size) !important; }
                     
                     #content { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; }
                     #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; outline: none; transition: opacity 0.2s; }
@@ -350,7 +350,10 @@ object EpubParser {
                                      if(resizeTimer) clearTimeout(resizeTimer);
                                      resizeTimer = setTimeout(function() {
                                          isResizing = false;
-                                         if(wrapper) wrapper.classList.remove('resizing');
+                                         if(wrapper) {
+                                             wrapper.classList.remove('resizing');
+                                             if (document.activeElement !== wrapper) wrapper.focus();
+                                         }
                                          findCurrentAnchor();
                                          updateProgress();
                                      }, 100);
