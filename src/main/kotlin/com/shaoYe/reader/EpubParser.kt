@@ -23,7 +23,6 @@ object EpubParser {
             <html lang='en' data-theme='$actualTheme'>
             <head>
                 <meta charset='UTF-8'>
-                <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data:;">
                 <style>
                     :root {
                         /* Base System Colors */
@@ -110,28 +109,60 @@ object EpubParser {
                     .icon-btn:hover { opacity: 1; background: var(--hover-bg); }
                     .icon-btn:active { transform: scale(0.95); }
 
-                    body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-family); }
+                    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-family); }
                     
-                    #content { width: 100vw; height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+                    #content { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; }
                     #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; scroll-snap-type: x mandatory; outline: none; transition: opacity 0.2s; }
                     #reader-wrapper.resizing { scroll-snap-type: none; cursor: col-resize; opacity: 0.8; }
                     #reader-text { height: 100%; padding: 5px 60px; column-fill: auto; position: relative; }
                     
                     .chapter { break-before: column; }
                     .page-content { padding: 0; margin: 0; width: 100%; box-sizing: border-box; }
-                    h1, h2, h3, h4, h5, h6 { break-inside: avoid; break-after: avoid; }
-                    p { line-height: 1.6; margin: 0; text-indent: 1.5em; text-align: justify; font-size: var(--font-size); letter-spacing: 0.02em; }
-                    img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 20px auto; border-radius: 8px; break-inside: avoid; }
+                    h1, h2, h3, h4, h5, h6 { break-inside: avoid; break-after: avoid; font-weight: bold; line-height: 1.2; }
+                    h1, h2, h3 { line-height: 1.2; margin: 0 !important; padding: 0 !important; font-weight: 600; break-after: avoid; }
+                    h1 { font-size: 1.3em !important; }
+                    h2 { font-size: 1.2em !important; }
+                    h3 { font-size: 1.1em !important; }
                     
+                    p { margin: 0 !important; padding: 5px 0 !important; line-height: 1.6; text-align: justify; }
+                    img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 10px auto; border-radius: 8px; break-inside: avoid; }
+                    
+                    /* Disable all book links */
+                    a { pointer-events: none !important; cursor: default !important; color: inherit !important; text-decoration: none !important; }
+
+                    /* Calibration for perfect column alignment */
+                    #reader-text { 
+                        padding: 0 !important; margin: 0 !important; box-sizing: border-box; 
+                        column-fill: auto; column-gap: 0 !important; column-width: 100% !important;
+                    }
+                    .page-content { padding: 8px !important; box-sizing: border-box; }
+                    
+                    /* Extreme One-line mode (Height < 35px) */
+                    @media (max-height: 35px) {
+                        .page-content { padding: 0 !important; }
+                        h1, h2, h3, p { font-size: 14px !important; line-height: 1.0 !important; padding: 0 !important; margin: 0 !important; }
+                    }
+
                     ::-webkit-scrollbar { display: none !important; }
                     .search-highlight { background-color: #ffeb3b; color: #000; border-radius: 2px; }
                     .active-match { background-color: #ff9800 !important; color: #fff !important; box-shadow: 0 0 4px rgba(0,0,0,0.4); }
 
-                    /* --- 隐私与隐匿功能：焦点失焦时瞬间隐藏内容，与标题栏按钮同步 --- */
-                    body.focus-lost #reader-text { opacity: 0 !important; }
+                    /* --- 隐私与隐匿功能：焦点失焦时瞬间隐藏内容 --- */
+                    body.focus-lost:not(.search-active):not(.dialog-active) #reader-text { opacity: 0.05 !important; pointer-events: none; transition-delay: 0.5s; }
+                    #reader-text { transition: opacity 0.2s ease-in-out; }
+                    
+                    #diag { position: fixed; top: 0; left: 0; font-size: 9px; background: rgba(0,0,0,0.8); color: #0f0; z-index: 10000; padding: 2px; display: none; pointer-events: none; }
+                    body.debug-mode #diag { display: block; }
+                    
+                    /* One-line reader optimization */
+                    @media (max-height: 50px) {
+                        #reader-text { padding-top: 0 !important; padding-bottom: 0 !important; }
+                        p { margin-top: 0 !important; margin-bottom: 0 !important; }
+                    }
                 </style>
             </head>
             <body>
+                <div id="diag" style="display:block !important; position:fixed; top:0; left:0; z-index:99999; background:rgba(0,0,0,0.8); color:#0f0; padding:2px; font-size:10px;">Initializing v2.2.0...</div>
                 <div id="content">
                     <div id="reader-wrapper" tabindex="0">
                         <div id="reader-text">$contentHtml</div>
@@ -139,291 +170,308 @@ object EpubParser {
                 </div>
                 
                 <script>
+                    // --- Bridge Injection ---
                     $bridgeScript
+                </script>
 
-                    /* --- 焦点监听：用于隐匿内容 --- */
-                    window.addEventListener('blur', () => { document.body.classList.add('focus-lost'); });
-                    window.addEventListener('focus', () => { document.body.classList.remove('focus-lost'); });
-                    if (!document.hasFocus()) { document.body.classList.add('focus-lost'); }
-                    
-                    window.onerror = function(msg, url, line, col, error) {
-                        if (window.readerBridge && window.readerBridge.sendSearchResults) {
-                            window.readerBridge.sendSearchResults("error|||JS Crash: " + msg + " at " + line + ":" + col);
-                        }
+                <script>
+                    // --- Diagnostic & Global State ---
+                    // --- Diagnostic Panel ---
+                    var diag = null;
+                    function dbg(m) { 
+                        console.log("[RM] " + m);
+                        if(!diag) diag = document.getElementById('diag');
+                        if(diag) diag.textContent = m.substring(0, 100);
+                    }
+
+                    window.onerror = function(m, u, l, c, e) {
+                        dbg("ERR: " + m + " at " + l + ":" + c);
+                        if(window.readerBridge && window.readerBridge.sendSearchResults) window.readerBridge.sendSearchResults("info|||ERR: " + m);
                         return false;
                     };
 
-                    const wrapper = document.getElementById('reader-wrapper');
-                    const textContainer = document.getElementById('reader-text');
-                    let allElements = [];
+                    // Define bridge early
+                    try {
+                        var bridgeScriptContent = "${(bridgeJs ?: "").replace("\"", "\\\"").replace("\n", " ")}";
+                        // Using eval as a fallback for bridge injection if needed
+                        $bridgeScript
+                    } catch(e) { dbg("Bridge Fail: " + e.message); }
 
-                    let isResizing = false;
-                    let resizeTimer = null;
-                    let currentAnchorIndex = 0;
-                    let currentAnchorAbsoluteLeft = 0;
-                    let lastWheelTime = 0;
-                    let saveTimeout = null;
-                    let progressTimeout = null;
+                    var wrapper = null;
+                    var textContainer = null;
+                    var allElements = [];
+                    var isResizing = false;
+                    var resizeTimer = null;
+                    var currentAnchorIndex = 0;
+                    var lastWheelTime = 0;
+                    var saveTimeout = null;
+                    var progressTimeout = null;
+                    var searchMatches = [];
 
-                    window.onload = () => { 
-                         if (!textContainer || !wrapper) return;
-                         allElements = Array.from(textContainer.querySelectorAll('p, h1, h2, h3, img, li, blockquote'));
-                         updateLayout(); 
-                         setTimeout(updateLayout, 100);
-                         wrapper.focus();
+                    // --- Global Functions (Defined early for reliability) ---
+                    window.readerNext = function() { 
+                        if (!wrapper) return;
+                        var w = wrapper.clientWidth;
+                        if (w <= 0) return;
+                        var curIdx = Math.round(wrapper.scrollLeft / w);
+                        wrapper.scrollTo({ left: (curIdx + 1) * w, behavior: 'instant' });
+                    };
+                    window.readerPrev = function() { 
+                        if (!wrapper) return;
+                        var w = wrapper.clientWidth;
+                        if (w <= 0) return;
+                        var curIdx = Math.round(wrapper.scrollLeft / w);
+                        wrapper.scrollTo({ left: (curIdx - 1) * w, behavior: 'instant' });
+                    };
+                    window.readerRestore = function(s) {
+                        var pct = parseFloat(s);
+                        if(!isNaN(pct)) {
+                            setTimeout(function() {
+                                if (!wrapper) return;
+                                var maxS = wrapper.scrollWidth - wrapper.clientWidth;
+                                wrapper.scrollTo({ left: pct * maxS, behavior: 'instant' });
+                                setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 350);
+                            }, 500);
+                        }
                     };
 
-                    function updateLayout(width) {
-                        if (!wrapper || !textContainer) return;
-                        const w = width || wrapper.clientWidth;
-                        if(w > 0) {
-                            textContainer.style.width = 'auto'; 
-                            textContainer.style.paddingLeft = '4px';
-                            textContainer.style.paddingRight = '4px';
-                            const usableWidth = w - 8;
-                            textContainer.style.columnWidth = Math.max(usableWidth, 20) + 'px';
-                            textContainer.style.columnGap = '8px';
-                        }
+                    function updateLayout(forcedWidth) {
+                        try {
+                             if (!wrapper || !textContainer) return;
+                             var w = forcedWidth || wrapper.clientWidth;
+                             var h = wrapper.clientHeight;
+                             if(w > 20) {
+                                 textContainer.style.width = 'auto';
+                                 textContainer.style.minWidth = '100vw'; 
+                                 textContainer.style.columnWidth = Math.floor(w) + 'px';
+                                 textContainer.style.columnGap = '0px';
+                                 textContainer.style.height = (h || 500) + 'px';
+                             }
+                        } catch(e) {}
                     }
 
-                    wrapper.addEventListener('scroll', () => {
-                        if (isResizing) return;
-                        updateProgress(); 
-                        if(saveTimeout) clearTimeout(saveTimeout);
-                        saveTimeout = setTimeout(() => {
-                            findCurrentAnchor();
-                            saveToBridge();
-                        }, 200);
-                    });
-
                     function findCurrentAnchor() {
-                        let bestIndex = 0;
-                        let minDistance = Infinity;
-                        for (let i = 0; i < allElements.length; i++) {
-                            const rect = allElements[i].getBoundingClientRect();
-                            if (rect.left >= 0 && rect.left < minDistance) {
-                                minDistance = rect.left;
-                                bestIndex = i;
+                        if (!allElements || allElements.length === 0 || !wrapper) return;
+                        var w = wrapper.clientWidth;
+                        if (w <= 0) return;
+                        
+                        var bestIndex = 0;
+                        var minScore = Infinity;
+                        for (var i = 0; i < allElements.length; i++) {
+                            var rect = allElements[i].getBoundingClientRect();
+                            if (rect.left >= -50 && rect.left < w) {
+                                var score = (Math.abs(rect.top) * 5) + Math.abs(rect.left);
+                                if (score < minScore) {
+                                    minScore = score;
+                                    bestIndex = i;
+                                }
+                                if (score < 5) break; 
                             }
                         }
                         currentAnchorIndex = bestIndex;
                     }
 
-                    const observer = new ResizeObserver(entries => {
-                        for(let entry of entries) {
-                            const width = entry.contentRect.width;
-                            if(width <= 0) continue;
-                            if (!isResizing) {
-                                isResizing = true;
-                                wrapper.classList.add('resizing');
-                                const anchorEl = allElements[currentAnchorIndex];
-                                if (anchorEl) {
-                                    currentAnchorAbsoluteLeft = wrapper.scrollLeft + anchorEl.getBoundingClientRect().left;
-                                }
-                            }
-                            if(resizeTimer) clearTimeout(resizeTimer);
-                            updateLayout(width);
-                            if (allElements[currentAnchorIndex]) {
-                                const newWidth = wrapper.clientWidth;
-                                const targetLeft = Math.floor(currentAnchorAbsoluteLeft / (newWidth || 1)) * newWidth;
-                                wrapper.scrollTo({left: targetLeft, behavior: 'instant'});
-                            }
-                            resizeTimer = setTimeout(() => {
-                                isResizing = false;
-                                wrapper.classList.remove('resizing');
-                                updateProgress();
-                            }, 200);
-                        }
-                    });
-                    observer.observe(wrapper);
-
-                    function saveToBridge() {
-                        if(!window.readerBridge) return;
-                        const w = wrapper.clientWidth;
-                        const maxScroll = wrapper.scrollWidth - w;
-                        const pct = maxScroll > 0 ? (wrapper.scrollLeft / maxScroll) : 0;
-                        window.readerBridge.saveProgress(pct.toString());
-                    }
-
-                    function navNext() { 
-                        const w = wrapper.clientWidth;
-                        const idx = Math.ceil((wrapper.scrollLeft + 1) / w);
-                        wrapper.scrollTo({ left: idx * w, behavior: 'smooth' });
-                    }
-                    function navPrev() { 
-                        const w = wrapper.clientWidth;
-                        const idx = Math.ceil((wrapper.scrollLeft + 1) / w);
-                        wrapper.scrollTo({ left: (idx - 2) * w, behavior: 'smooth' });
-                    }
-
-                    function getProgressString() {
-                        const w = wrapper.clientWidth;
-                        const scrollW = wrapper.scrollWidth;
-                        if(w > 0) {
-                             const current = Math.ceil((wrapper.scrollLeft + 1) / w);
-                             const total = Math.ceil(scrollW / w) || 1;
-                             const maxScroll = scrollW - w;
-                             const pct = maxScroll > 0 ? Math.round((wrapper.scrollLeft / maxScroll) * 100) : 0;
-                             return current + ' / ' + total + ' (' + pct + '%)';
-                        }
-                        return "0 / 0 (0%)";
-                    }
-
                     function updateProgress() {
                         if (isResizing) return;
                         if (progressTimeout) clearTimeout(progressTimeout);
-                        progressTimeout = setTimeout(() => {
-                             const text = getProgressString();
-                             if(window.readerBridge && window.readerBridge.sendProgressInfo) {
-                                 window.readerBridge.sendProgressInfo(text);
-                             }
-                        }, 50);
+                        progressTimeout = setTimeout(function() {
+                             if (!wrapper || !window.readerBridge || !window.readerBridge.sendProgressInfo) return;
+                             var w = wrapper.clientWidth;
+                             if (w <= 0) return;
+                             var scrollW = wrapper.scrollWidth;
+                             var cur = Math.ceil((wrapper.scrollLeft + 1) / w);
+                             var total = Math.ceil(scrollW / w) || 1;
+                             var maxS = scrollW - w;
+                             var pct = maxS > 0 ? Math.round((wrapper.scrollLeft / maxS) * 100) : 0;
+                             window.readerBridge.sendProgressInfo(cur + ' / ' + total + ' (' + pct + '%)');
+                        }, 100);
                     }
 
-                    window.requestProgressInfo = function() {
-                         if(window.readerBridge) window.readerBridge.sendProgressInfo(getProgressString());
-                    };
-                    
-                    window.readerRestore = function(s) {
-                        const pct = parseFloat(s);
-                        if(!isNaN(pct)) {
-                            setTimeout(() => {
-                                wrapper.scrollTo({ left: pct * (wrapper.scrollWidth - wrapper.clientWidth), behavior: 'instant' });
-                                setTimeout(findCurrentAnchor, 200);
-                            }, 300);
-                        }
-                    };
+                    function start() {
+                        try {
+                             var d = document.getElementById('diag');
+                             if(d) d.textContent = "Checking elements...";
+                             
+                             wrapper = document.getElementById('reader-wrapper');
+                             textContainer = document.getElementById('reader-text');
+                             if (!textContainer || !wrapper) {
+                                  if(d) d.textContent = "ERR: Elements not found";
+                                  setTimeout(start, 200); return;
+                             }
+                             
+                             if(d) d.textContent = "Bridge: " + (typeof window.readerBridge);
 
+                             // 1. Populate Elements
+                             var rawNodes = textContainer.querySelectorAll('p, h1, h2, h3, h4, h5, h6, img, li, blockquote, .page-content div, .chapter div');
+                             allElements = [];
+                             for(var i=0; i<rawNodes.length; i++) { allElements.push(rawNodes[i]); }
+                             
+                             if (allElements.length === 0) {
+                                 var allNodes = textContainer.querySelectorAll('*');
+                                 for(var j=0; j<allNodes.length; j++) {
+                                     var el = allNodes[j]; var s = window.getComputedStyle(el);
+                                     if (el.textContent.trim().length > 0 && s.display !== 'none') allElements.push(el);
+                                 }
+                             }
+                             
+                             // 2. Attach Listeners
+                             window.addEventListener('blur', function() { document.body.classList.add('focus-lost'); });
+                             window.addEventListener('focus', function() { document.body.classList.remove('focus-lost'); });
+                             if (!document.hasFocus()) document.body.classList.add('focus-lost');
+
+                             wrapper.addEventListener('scroll', function() {
+                                 if (isResizing) return;
+                                 updateProgress(); 
+                                 if(saveTimeout) clearTimeout(saveTimeout);
+                                 saveTimeout = setTimeout(function() { 
+                                     findCurrentAnchor(); 
+                                     if(window.readerBridge && window.readerBridge.saveProgress) {
+                                         var w = wrapper.clientWidth; var maxS = wrapper.scrollWidth - w;
+                                         var pct = maxS > 0 ? (wrapper.scrollLeft / maxS) : 0;
+                                         window.readerBridge.saveProgress(pct.toString());
+                                     } 
+                                 }, 300);
+                             });
+                             
+                             wrapper.addEventListener('wheel', function(e) {
+                                  e.preventDefault(); var now = Date.now();
+                                  if (now - lastWheelTime > 200) {
+                                      if (e.deltaY > 0 || e.deltaX > 0) window.readerNext();
+                                      else if (e.deltaY < 0 || e.deltaX < 0) window.readerPrev();
+                                      lastWheelTime = now;
+                                  }
+                             }, { passive: false });
+
+                             if (typeof ResizeObserver !== 'undefined') {
+                                 var observer = new ResizeObserver(function() {
+                                     if (!wrapper || isResizing) return;
+                                     isResizing = true; wrapper.classList.add('resizing');
+                                     findCurrentAnchor(); updateLayout();
+                                     if (allElements[currentAnchorIndex]) {
+                                         var el = allElements[currentAnchorIndex];
+                                         setTimeout(function() {
+                                             var rect = el.getBoundingClientRect();
+                                             var targetL = wrapper.scrollLeft + rect.left - 8;
+                                             wrapper.scrollTo({left: targetL, behavior: 'instant'});
+                                         }, 0);
+                                     }
+                                     if(resizeTimer) clearTimeout(resizeTimer);
+                                     resizeTimer = setTimeout(function() { isResizing = false; if(wrapper) wrapper.classList.remove('resizing'); updateProgress(); }, 300);
+                                 });
+                                 observer.observe(wrapper);
+                             }
+
+                             // 3. Initial Layout
+                             updateLayout(); 
+                             setTimeout(function() { 
+                                 updateLayout(); findCurrentAnchor(); 
+                                 if(window.readerBridge && window.readerBridge.ready) window.readerBridge.ready();
+                                 if(d) { d.textContent = "OK: Elements " + allElements.length; setTimeout(function(){ d.style.display='none'; }, 2000); }
+                             }, 500);
+                             wrapper.focus();
+                        } catch(e) { if(d) d.textContent = "INIT ERR: " + e.message; }
+                    }
+                    
+                    if (document.readyState === 'complete') start(); else window.addEventListener('load', start);
+                </script>
+                <script>
                     document.addEventListener('keydown', function(e) {
                         if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
-                        if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') { e.preventDefault(); navPrev(); }
-                        else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') { e.preventDefault(); navNext(); }
+                        var key = e.key.toLowerCase();
+                        if (key === 'arrowleft' || key === 'a') { e.preventDefault(); window.readerPrev(); }
+                        else if (key === 'arrowright' || key === 'd') { e.preventDefault(); window.readerNext(); }
                     });
-                    
-                    wrapper.addEventListener('wheel', (e) => {
-                         e.preventDefault();
-                         const now = Date.now();
-                         if (now - lastWheelTime > 300) {
-                             if (e.deltaY > 0 || e.deltaX > 0) navNext();
-                             else if (e.deltaY < 0 || e.deltaX < 0) navPrev();
-                             lastWheelTime = now;
-                         }
-                    }, { passive: false });
-
-                    window.readerNext = navNext; window.readerPrev = navPrev;
 
                     window.readerZoomIn = function() {
-                        const root = document.documentElement;
-                        const currentSize = parseInt(getComputedStyle(root).getPropertyValue('--font-size')) || 16;
-                        const newSize = currentSize + 2;
-                        root.style.setProperty('--font-size', newSize + 'px');
-                        if (window.readerBridge) window.readerBridge.saveFontSize(newSize.toString());
-                        setTimeout(() => { updateLayout(); findCurrentAnchor(); }, 100);
+                        var root = document.documentElement;
+                        var cur = parseInt(getComputedStyle(root).getPropertyValue('--font-size')) || 16;
+                        var next = cur + 2;
+                        root.style.setProperty('--font-size', next + 'px');
+                        if (window.readerBridge && window.readerBridge.saveFontSize) window.readerBridge.saveFontSize(next.toString());
+                        setTimeout(function() { updateLayout(); findCurrentAnchor(); }, 150);
                     };
-
                     window.readerZoomOut = function() {
-                        const root = document.documentElement;
-                        const currentSize = parseInt(getComputedStyle(root).getPropertyValue('--font-size')) || 16;
-                        if(currentSize > 10) {
-                            const newSize = currentSize - 2;
-                            root.style.setProperty('--font-size', newSize + 'px');
-                            if (window.readerBridge) window.readerBridge.saveFontSize(newSize.toString());
-                            setTimeout(() => { updateLayout(); findCurrentAnchor(); }, 100);
+                        var root = document.documentElement;
+                        var cur = parseInt(getComputedStyle(root).getPropertyValue('--font-size')) || 16;
+                        if(cur > 10) {
+                            var next = cur - 2;
+                            root.style.setProperty('--font-size', next + 'px');
+                            if (window.readerBridge && window.readerBridge.saveFontSize) window.readerBridge.saveFontSize(next.toString());
+                            setTimeout(function() { updateLayout(); findCurrentAnchor(); }, 150);
                         }
                     };
 
-                    function clearHighlights() {
-                        const highlights = document.querySelectorAll('.search-highlight');
-                        highlights.forEach(span => {
-                            const parent = span.parentNode;
-                            if (parent) {
-                                parent.replaceChild(document.createTextNode(span.textContent), span);
-                                parent.normalize();
-                            }
-                        });
-                        searchMatches = [];
-                    }
-
-                    let searchMatches = [];
-                    window.performSearchFromNative = function(query) {
-                        let finalResult = "NONE";
-                        try {
-                            query = (query || "").trim();
-                            if (!query) {
-                                clearHighlights();
-                                if (window.readerBridge) window.readerBridge.sendSearchResults("");
-                                return;
-                            }
-                            clearHighlights();
-                            searchMatches = [];
-                            const container = document.getElementById('reader-text');
-                            if (!container) return;
-
-                            const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
-                            let node;
-                            const textNodes = [];
-                            while(node = walker.nextNode()) {
-                                const p = node.parentNode;
-                                if (p && (p.tagName === 'SCRIPT' || p.tagName === 'STYLE')) continue;
-                                textNodes.push(node);
-                            }
-
-                            let matchCount = 0;
-                            const maxMatches = 500;
-                            const queryLower = query.toLowerCase();
-                            const queryLen = query.length;
-
-                            for (let textNode of textNodes) {
-                                if (matchCount >= maxMatches) break;
-                                const text = textNode.nodeValue;
-                                const textLower = text.toLowerCase();
-                                let startIndex = 0, index;
-                                const matchesInNode = [];
-                                while ((index = textLower.indexOf(queryLower, startIndex)) !== -1) {
-                                    matchesInNode.push(index);
-                                    startIndex = index + queryLen;
-                                    if (matchCount + matchesInNode.length >= maxMatches) break;
-                                }
-
-                                if (matchesInNode.length > 0) {
-                                    const parent = textNode.parentNode;
-                                    const frag = document.createDocumentFragment();
-                                    let lastIdx = 0;
-                                    for (let idx of matchesInNode) {
-                                        frag.appendChild(document.createTextNode(text.substring(lastIdx, idx)));
-                                        const span = document.createElement('span');
-                                        span.className = 'search-highlight';
-                                        span.id = 'search-match-' + matchCount;
-                                        span.textContent = text.substring(idx, idx + queryLen);
-                                        frag.appendChild(span);
-
-                                        const start = Math.max(0, idx - 40), end = Math.min(text.length, idx + queryLen + 40);
-                                        let snippet = text.substring(start, idx) + "<b>" + span.textContent + "</b>" + text.substring(idx + queryLen, end);
-                                        searchMatches.push({ id: span.id, text: (start > 0 ? '... ' : '') + snippet.replace(/\s+/g, ' ') + (end < text.length ? ' ...' : '') });
-                                        lastIdx = idx + queryLen;
-                                        matchCount++;
-                                    }
-                                    frag.appendChild(document.createTextNode(text.substring(lastIdx)));
-                                    parent.replaceChild(frag, textNode);
-                                }
-                            }
-                            finalResult = searchMatches.map(m => m.id + "|||" + m.text).join("|||") || "NONE";
-                        } catch (e) { finalResult = "error|||" + e.toString(); }
-                        finally { if (window.readerBridge) window.readerBridge.sendSearchResults(finalResult); }
-                    };
-
-                    window.jumpToMatch = function(id) {
-                         document.querySelectorAll('.active-match').forEach(el => el.classList.remove('active-match'));
-                         const el = document.getElementById(id);
+                    window.scrollToId = function(id) {
+                         var el = document.getElementById(id) || document.querySelector('[id="' + id + '"]');
                          if(el) {
-                             el.classList.add('active-match');
-                             const container = document.getElementById('reader-wrapper');
-                             const w = container.clientWidth;
-                             const rect = el.getBoundingClientRect();
-                             const absoluteLeft = container.scrollLeft + rect.left;
-                             container.scrollTo({ left: Math.floor((absoluteLeft - 10) / (w || 1)) * w, behavior: 'auto' });
+                             var rect = el.getBoundingClientRect();
+                             var targetL = wrapper.scrollLeft + rect.left - 8;
+                             wrapper.scrollTo({ left: targetL, behavior: 'instant' });
+                             setTimeout(function() { findCurrentAnchor(); }, 300);
                          }
                     };
+                    
+                    window.jumpToMatch = function(id) {
+                         var hl = document.querySelectorAll('.active-match');
+                         for(var i=0; i<hl.length; i++) { hl[i].classList.remove('active-match'); }
+                         var el = document.getElementById(id);
+                         if(el) {
+                             el.classList.add('active-match');
+                             var rect = el.getBoundingClientRect();
+                             var targetL = wrapper.scrollLeft + rect.left - 8;
+                             wrapper.scrollTo({ left: targetL, behavior: 'instant' });
+                         }
+                    };
+
+                    window.performSearchFromNative = function(query) {
+                        try {
+                            query = (query || "").trim().toLowerCase();
+                            var hl = document.querySelectorAll('.search-highlight');
+                            for(var i=0; i<hl.length; i++) {
+                                var span = hl[i]; var p = span.parentNode; 
+                                if(p) { p.replaceChild(document.createTextNode(span.textContent), span); p.normalize(); }
+                            }
+                            searchMatches = [];
+                            if (!query) { document.body.classList.remove('search-active'); return; }
+
+                            var walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
+                            var node; var textNodes = [];
+                            while(node = walker.nextNode()) { 
+                                if(node.parentNode.tagName !== 'SCRIPT' && node.parentNode.tagName !== 'STYLE') textNodes.push(node); 
+                            }
+
+                            var matchCount = 0;
+                            for (var k = 0; k < textNodes.length; k++) {
+                                var tNode = textNodes[k];
+                                var text = tNode.nodeValue; var textL = text.toLowerCase();
+                                var idx = textL.indexOf(query);
+                                if (idx !== -1) {
+                                    var span = document.createElement('span');
+                                    span.className = 'search-highlight'; span.id = 'search-match-' + matchCount;
+                                    span.textContent = text.substring(idx, idx + query.length);
+                                    
+                                    var snipStart = Math.max(0, idx - 40);
+                                    var snipEnd = Math.min(text.length, idx + query.length + 40);
+                                    var snippet = text.substring(snipStart, idx) + "<b>" + span.textContent + "</b>" + text.substring(idx + query.length, snipEnd);
+                                    searchMatches.push({ id: span.id, text: (snipStart > 0 ? "... " : "") + snippet.replace(/\s+/g, ' ') + (snipEnd < text.length ? " ..." : "") });
+                                    
+                                    var range = document.createRange();
+                                    range.setStart(tNode, idx); range.setEnd(tNode, idx + query.length);
+                                    range.surroundContents(span);
+                                    matchCount++; if (matchCount > 500) break;
+                                }
+                            }
+                            document.body.classList.toggle('search-active', searchMatches.length > 0);
+                            if(window.readerBridge && window.readerBridge.sendSearchResults) {
+                                var res = "";
+                                for(var m=0; m<searchMatches.length; m++) { res += searchMatches[m].id + "|||" + searchMatches[m].text + (m < searchMatches.length - 1 ? "|||" : ""); }
+                                window.readerBridge.sendSearchResults(res || "NONE");
+                            }
+                        } catch(e) { }
+                    };
+
+                    window.setDialogActive = function(a) { document.body.classList.toggle('dialog-active', !!a); };
+                    window.setSearchActive = function(a) { document.body.classList.toggle('search-active', !!a); };
                 </script>
             </body>
             </html>
@@ -492,7 +540,7 @@ object EpubParser {
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
                 <div style="cursor: pointer;">
-                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v1.4.4</div>
+                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v2.2.0 (Stable)</div>
                     
                     <div style="font-size: 14px; line-height: 1.8; margin-bottom: 20px;">
                         <div style="font-weight: bold; color: var(--text);">New in this version:</div>
@@ -548,8 +596,13 @@ object EpubParser {
         val spineRefs = book.spine.spineReferences
         return tocItems.map { item ->
             val href = item.htmlId.substringBefore("#")
+            val fragment = item.htmlId.substringAfter("#", "")
             val idx = spineRefs.indexOfFirst { it.resource.href == href }
-            if (idx != -1) TocItem("spine-$idx", item.title) else item
+            if (idx != -1) {
+                // If there's a specific fragment, use it as the ID. Otherwise use the spine-X ID.
+                if (fragment.isNotEmpty()) TocItem(fragment, item.title)
+                else TocItem("spine-$idx", item.title)
+            } else item
         }
     }
 

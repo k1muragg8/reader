@@ -136,7 +136,7 @@ class ReaderService(private val project: Project) {
                     updateFontSize(fontSize)
 
                     // Mark as ready to save progress after a short delay to ensure DOM is fully laid out
-                    browser?.executeJavaScript("setTimeout(() => { window.isReadyToSave = true; }, 500);", browser.url, 0)
+                    browser?.executeJavaScript("setTimeout(function() { window.isReadyToSave = true; }, 500);", browser.url, 0)
                 }
             }
         }, jbCefBrowser.cefBrowser)
@@ -180,7 +180,8 @@ class ReaderService(private val project: Project) {
                 saveFontFamily: function(val) { ${saveFontFamilyQuery?.inject("val")} },
                 saveFontSize: function(val) { ${saveFontSizeQuery?.inject("val")} },
                 sendSearchResults: function(val) { ${searchResultsQuery?.inject("val")} },
-                sendProgressInfo: function(val) { ${progressInfoQuery?.inject("val")} }
+                sendProgressInfo: function(val) { ${progressInfoQuery?.inject("val")} },
+                setSearchActive: function(active) { if(active) document.body.classList.add('search-active'); else document.body.classList.remove('search-active'); }
             };
         """.trimIndent()
     }
@@ -249,18 +250,34 @@ class ReaderService(private val project: Project) {
 
     // --- Kotlin Dialog Handlers ---
     fun toggleToc() {
+        setDialogActive(true)
         TocDialog(project, currentTocItems, this).show()
+        // Removed immediate false to prevent content hiding
     }
 
     fun toggleSearch() {
         if (currentSearchDialog == null || !currentSearchDialog!!.isShowing) {
+            setSearchActive(true)
             currentSearchDialog = SearchDialog(project, this)
             currentSearchDialog?.show()
+            // We need a way to detect when dialog closes to set search active to false
+            // DialogWrapper has a callback or we can check later.
+            // For now, let's just keep it active while the dialog reference exists and is showing.
         }
     }
 
+    fun setSearchActive(active: Boolean) {
+        browser?.cefBrowser?.executeJavaScript("if(window.setSearchActive) window.setSearchActive($active);", null, 0)
+    }
+
     fun toggleSettings() {
+        setDialogActive(true)
         SettingsDialog(project, this).show()
+        // Removed immediate false
+    }
+
+    private fun setDialogActive(active: Boolean) {
+        browser?.cefBrowser?.executeJavaScript("if(window.setDialogActive) window.setDialogActive($active);", null, 0)
     }
 
     fun showProgressInfo() {

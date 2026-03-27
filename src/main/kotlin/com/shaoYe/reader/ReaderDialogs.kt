@@ -182,6 +182,7 @@ class SearchDialog(project: Project, private val service: ReaderService) : Dialo
         })
 
         val list = JBList(listModel)
+        list.emptyText.text = "Enter keywords to search..."
         list.addListSelectionListener {
             if (!it.valueIsAdjusting) {
                 val idx = list.selectedIndex
@@ -192,10 +193,17 @@ class SearchDialog(project: Project, private val service: ReaderService) : Dialo
         }
 
         val scrollPane = JBScrollPane(list)
-        scrollPane.preferredSize = Dimension(450, 400)
         panel.add(scrollPane, BorderLayout.CENTER)
 
+        panel.preferredSize = Dimension(450, 350)
+        panel.minimumSize = Dimension(200, 150)
+
         return panel
+    }
+
+    override fun dispose() {
+        service.setSearchActive(false)
+        super.dispose()
     }
 
     override fun createActions() = emptyArray<Action>()
