@@ -58,54 +58,56 @@ object EpubParser {
                         --border: #333333; --icon-stroke: #d4d4d4;
                         --hover-bg: rgba(255,255,255,0.1);
                     }
-                    
-                    body { 
+
+                    body {
                         font-family: var(--font-family);
-                        margin: 0 !important; padding: 0 !important; width: 100% !important; 
+                        margin: 0 !important; padding: 0 !important; width: 100% !important;
                         max-width: none !important; box-sizing: border-box !important;
-                        background-color: var(--bg); color: var(--text); overflow: hidden; 
+                        background-color: var(--bg); color: var(--text); overflow: hidden;
                         transition: background-color 0.3s ease, color 0.3s ease;
                         overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;
                     }
                     * { box-sizing: border-box; }
-                    
+
                     /* --- 核心优化：抗闪烁 CSS --- */
                     /* 当处于 resizing 状态时，强制关闭所有动画和吸附，像石头一样稳 */
                     .resizing, .resizing * {
                         transition: none !important;
                         scroll-behavior: auto !important;
+                        scroll-snap-type: none !important;
                     }
 
 
                     body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-family); }
-                    
+
                     #content { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-                    #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; outline: none; transition: opacity 0.2s; }
-                    #reader-wrapper.resizing { cursor: col-resize; opacity: 0.8; }
+                    #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; scroll-snap-type: x mandatory; outline: none; transition: opacity 0.2s; }
+                    #reader-wrapper.resizing { scroll-snap-type: none; cursor: col-resize; opacity: 0.8; }
                     #reader-text { height: 100%; padding: 5px 60px; column-fill: auto; position: relative; }
-                    
+
                     .chapter { break-before: column; }
                     .page-content { padding: 0; margin: 0; width: 100%; box-sizing: border-box; }
                     h1, h2, h3, h4, h5, h6 { break-inside: avoid; break-after: avoid; font-weight: bold; line-height: 1.2; }
-                    h1, h2, h3, h4, h5, h6 { line-height: 1.2; margin: 0 !important; padding: 0 !important; font-weight: 600; break-after: avoid; }
-                    h1 { font-size: 1.1em !important; }
-                    h2 { font-size: 1.05em !important; }
-                    h3, h4, h5, h6 { font-size: 1.0em !important; }
-                    
+                    h1, h2, h3 { line-height: 1.2; margin: 0 !important; padding: 0 !important; font-weight: 600; break-after: avoid; }
+                    h1 { font-size: 1.2em !important; }
+                    h2 { font-size: 1.1em !important; }
+                    h3 { font-size: 1.05em !important; }
+
                     p { margin: 0 !important; padding: 5px 0 !important; line-height: 1.6; text-align: justify; }
                     img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 10px auto; border-radius: 8px; break-inside: avoid; }
-                    
+
                     /* Disable all book links */
                     a { pointer-events: none !important; cursor: default !important; color: inherit !important; text-decoration: none !important; }
 
                     /* Calibration for perfect column alignment & Anti-Tearing (Requirement 13) */
-                    #reader-text { 
-                        padding: 0 !important; margin: 0 !important; box-sizing: border-box; 
+                    #reader-text {
+                        padding: 0 !important; margin: 0 !important; box-sizing: border-box;
                         column-fill: auto; column-gap: 0px !important; column-width: 100vw !important;
+                        scroll-snap-type: x mandatory;
                     }
-                    .chapter { break-before: column; }
+                    .chapter { break-before: column; scroll-snap-align: start; }
                     .page-content { padding: 5px !important; box-sizing: border-box; height: 100%; }
-                    
+
                     /* Extreme One-line mode (Height < 35px) */
                     @media (max-height: 35px) {
                         .page-content { padding: 0 !important; }
@@ -117,11 +119,14 @@ object EpubParser {
                     .active-match { background-color: #ff9800 !important; color: #fff !important; box-shadow: 0 0 4px rgba(0,0,0,0.4); }
 
                     /* --- Privacy: Absolute focus-lost hiding (Requirement 14) --- */
-                    body.focus-lost:not(.search-active):not(.dialog-active) #content { 
-                        opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; transition-delay: 0s; 
+                    body.focus-lost:not(.search-active):not(.dialog-active) #content {
+                        opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; transition-delay: 0s;
                     }
                     #content { transition: opacity 0.2s ease-in-out; }
-                    
+
+                    #diag { position: fixed; top: 0; left: 0; font-size: 9px; background: rgba(0,0,0,0.8); color: #0f0; z-index: 10000; padding: 2px; display: none; pointer-events: none; }
+                    body.debug-mode #diag { display: block; }
+
                     /* One-line reader optimization */
                     @media (max-height: 50px) {
                         #reader-text { padding-top: 0 !important; padding-bottom: 0 !important; }
@@ -130,12 +135,13 @@ object EpubParser {
                 </style>
             </head>
             <body>
+                <div id="diag" style="display:block !important; position:fixed; top:0; left:0; z-index:99999; background:rgba(0,0,0,0.8); color:#0f0; padding:2px; font-size:10px;">Initializing v3.0.0...</div>
                 <div id="content">
                     <div id="reader-wrapper" tabindex="0">
                         <div id="reader-text">$contentHtml</div>
                     </div>
                 </div>
-                
+
                 <script>
                     // --- Bridge Injection ---
                     $bridgeScript
@@ -145,7 +151,7 @@ object EpubParser {
                     // --- Diagnostic & Global State ---
                     // --- Diagnostic Panel ---
                     var diag = null;
-                    function dbg(m) { 
+                    function dbg(m) {
                         console.log("[RM] " + m);
                         if(!diag) diag = document.getElementById('diag');
                         if(diag) diag.textContent = m.substring(0, 100);
@@ -176,20 +182,19 @@ object EpubParser {
                     var searchMatches = [];
 
                     // --- Global Functions (Defined early for reliability) ---
-                    window.readerNext = function() { 
+                    window.readerNext = function() {
                         if (!wrapper) return;
                         var w = wrapper.clientWidth;
                         if (w <= 0) return;
-                        var curIdx = Math.ceil((wrapper.scrollLeft + 1) / w) - 1;
+                        var curIdx = Math.round(wrapper.scrollLeft / w);
                         wrapper.scrollTo({ left: (curIdx + 1) * w, behavior: 'instant' });
                     };
-                    window.readerPrev = function() { 
+                    window.readerPrev = function() {
                         if (!wrapper) return;
                         var w = wrapper.clientWidth;
                         if (w <= 0) return;
-                        var curIdx = Math.ceil((wrapper.scrollLeft + 1) / w) - 1;
-                        var target = Math.max(0, (curIdx - 1) * w);
-                        wrapper.scrollTo({ left: target, behavior: 'instant' });
+                        var curIdx = Math.round(wrapper.scrollLeft / w);
+                        wrapper.scrollTo({ left: (curIdx - 1) * w, behavior: 'instant' });
                     };
                     window.readerRestore = function(s) {
                         var pct = parseFloat(s);
@@ -211,7 +216,7 @@ object EpubParser {
                              if(w > 20) {
                                  // Requirement 1: uniform small margins
                                  textContainer.style.width = 'auto';
-                                 textContainer.style.minWidth = '100vw'; 
+                                 textContainer.style.minWidth = '100vw';
                                  textContainer.style.columnWidth = w + 'px';
                                  textContainer.style.columnGap = '0px';
                                  textContainer.style.height = h + 'px';
@@ -225,7 +230,7 @@ object EpubParser {
                         if (!allElements || allElements.length === 0 || !wrapper) return;
                         var w = wrapper.clientWidth;
                         if (w <= 0) return;
-                        
+
                         var bestIndex = 0;
                         var minScore = Infinity;
                         for (var i = 0; i < allElements.length; i++) {
@@ -236,7 +241,7 @@ object EpubParser {
                                     minScore = score;
                                     bestIndex = i;
                                 }
-                                if (score < 5) break; 
+                                if (score < 5) break;
                             }
                         }
                         currentAnchorIndex = bestIndex;
@@ -245,14 +250,14 @@ object EpubParser {
                     function updateProgress() {
                         if (isResizing || !window.readerBridge || !window.readerBridge.sendProgressInfo) return;
                         var w = wrapper.clientWidth; if (w <= 0) return;
-                        var cur = Math.ceil((wrapper.scrollLeft + 1) / w);
+                        var cur = Math.round(wrapper.scrollLeft / w) + 1;
                         // Use Math.ceil to capture the exact total number of pages based on actual scrollWidth
                         var total = Math.max(1, Math.ceil(wrapper.scrollWidth / w));
                         var maxS = wrapper.scrollWidth - w;
                         var pct = maxS > 0 ? Math.round((wrapper.scrollLeft / maxS) * 100) : 0;
                         window.readerBridge.sendProgressInfo(cur + ' / ' + total + ' (' + pct + '%)');
                     }
-                    
+
                     /* Requirement 12: Implementation of Progress Info Request */
                     window.requestProgressInfo = function() {
                         updateProgress();
@@ -260,17 +265,23 @@ object EpubParser {
 
                     function start() {
                         try {
+                             var d = document.getElementById('diag');
+                             if(d) d.textContent = "Checking elements...";
+
                              wrapper = document.getElementById('reader-wrapper');
                              textContainer = document.getElementById('reader-text');
                              if (!textContainer || !wrapper) {
+                                  if(d) d.textContent = "ERR: Elements not found";
                                   setTimeout(start, 200); return;
                              }
-                             
+
+                             if(d) d.textContent = "Bridge: " + (typeof window.readerBridge);
+
                              // 1. Populate Elements
                              var rawNodes = textContainer.querySelectorAll('p, h1, h2, h3, h4, h5, h6, img, li, blockquote, .page-content div, .chapter div');
                              allElements = [];
                              for(var i=0; i<rawNodes.length; i++) { allElements.push(rawNodes[i]); }
-                             
+
                              if (allElements.length === 0) {
                                  var allNodes = textContainer.querySelectorAll('*');
                                  for(var j=0; j<allNodes.length; j++) {
@@ -278,7 +289,7 @@ object EpubParser {
                                      if (el.textContent.trim().length > 0 && s.display !== 'none') allElements.push(el);
                                  }
                              }
-                             
+
                              // 2. Attach Listeners
                              window.addEventListener('blur', function() { document.body.classList.add('focus-lost'); });
                              window.addEventListener('focus', function() { document.body.classList.remove('focus-lost'); });
@@ -286,41 +297,35 @@ object EpubParser {
 
                              wrapper.addEventListener('scroll', function() {
                                  if (isResizing) return;
-                                 updateProgress(); 
+                                 updateProgress();
                                  if(saveTimeout) clearTimeout(saveTimeout);
-                                 saveTimeout = setTimeout(function() { 
-                                     findCurrentAnchor(); 
+                                 saveTimeout = setTimeout(function() {
+                                     findCurrentAnchor();
                                      if(window.readerBridge && window.readerBridge.saveProgress) {
                                          var w = wrapper.clientWidth; var maxS = wrapper.scrollWidth - w;
                                          var pct = maxS > 0 ? (wrapper.scrollLeft / maxS) : 0;
                                          window.readerBridge.saveProgress(pct.toString());
-                                     } 
+                                     }
                                  }, 300);
                              });
-                             
+
                              wrapper.addEventListener('wheel', function(e) {
-                                  var now = Date.now();
-                                  if (Math.abs(e.deltaX) > 10 || Math.abs(e.deltaY) > 10) {
-                                      e.preventDefault();
-                                      if (now - lastWheelTime > 200) {
-                                          if (e.deltaY > 0 || e.deltaX > 0) window.readerNext();
-                                          else if (e.deltaY < 0 || e.deltaX < 0) window.readerPrev();
-                                          lastWheelTime = now;
-                                      }
+                                  e.preventDefault(); var now = Date.now();
+                                  if (now - lastWheelTime > 200) {
+                                      if (e.deltaY > 0 || e.deltaX > 0) window.readerNext();
+                                      else if (e.deltaY < 0 || e.deltaX < 0) window.readerPrev();
+                                      lastWheelTime = now;
                                   }
                              }, { passive: false });
 
                              // Catch global wheel events in case mouse is not exactly over the wrapper
                              window.addEventListener('wheel', function(e) {
                                   if(e.target === wrapper || wrapper.contains(e.target)) return;
-                                  var now = Date.now();
-                                  if (Math.abs(e.deltaX) > 10 || Math.abs(e.deltaY) > 10) {
-                                      e.preventDefault();
-                                      if (now - lastWheelTime > 200) {
-                                          if (e.deltaY > 0 || e.deltaX > 0) window.readerNext();
-                                          else if (e.deltaY < 0 || e.deltaX < 0) window.readerPrev();
-                                          lastWheelTime = now;
-                                      }
+                                  e.preventDefault(); var now = Date.now();
+                                  if (now - lastWheelTime > 200) {
+                                      if (e.deltaY > 0 || e.deltaX > 0) window.readerNext();
+                                      else if (e.deltaY < 0 || e.deltaX < 0) window.readerPrev();
+                                      lastWheelTime = now;
                                   }
                              }, { passive: false });
 
@@ -338,53 +343,48 @@ object EpubParser {
                                          }
                                          setTimeout(function() {
                                              var rect = el.getBoundingClientRect();
-                                             var targetL = Math.floor((wrapper.scrollLeft + rect.left) / wrapper.clientWidth) * wrapper.clientWidth;
+                                             var targetL = Math.round((wrapper.scrollLeft + rect.left) / wrapper.clientWidth) * wrapper.clientWidth;
                                              wrapper.scrollTo({left: targetL, behavior: 'instant'});
                                          }, 10);
                                      }
-
                                      if(resizeTimer) clearTimeout(resizeTimer);
                                      resizeTimer = setTimeout(function() {
                                          isResizing = false;
                                          if(wrapper) wrapper.classList.remove('resizing');
                                          findCurrentAnchor();
                                          updateProgress();
-                                     }, 100);
+                                     }, 300);
                                  });
                                  observer.observe(wrapper);
                              }
 
                              // 3. Initial Layout
-                             updateLayout(); 
-                             setTimeout(function() { 
-                                 updateLayout(); findCurrentAnchor(); 
+                             updateLayout();
+                             setTimeout(function() {
+                                 updateLayout(); findCurrentAnchor();
 
                                  // Requirement 6: Disable all links strictly
-                                 var allLinks = document.querySelectorAll('a, [onclick]');
+                                 var allLinks = document.querySelectorAll('a');
                                  for (var k = 0; k < allLinks.length; k++) {
-                                     allLinks[k].onclick = function(e) { e.preventDefault(); e.stopPropagation(); return false; };
-                                     if(allLinks[k].tagName === 'A') allLinks[k].removeAttribute("href");
+                                     allLinks[k].onclick = function() { return false; };
+                                     allLinks[k].removeAttribute("href");
                                  }
 
-                                 document.addEventListener('click', function(e) {
-                                     var a = e.target.closest('a');
-                                     if(a) { e.preventDefault(); e.stopPropagation(); return false; }
-                                 }, true);
-
                                  if(window.readerBridge && window.readerBridge.ready) window.readerBridge.ready();
+                                 if(d) { d.textContent = "OK: Elements " + allElements.length; setTimeout(function(){ d.style.display='none'; }, 2000); }
                              }, 500);
                              wrapper.focus();
-                        } catch(e) { console.error("INIT ERR: " + e.message); }
+                        } catch(e) { if(d) d.textContent = "INIT ERR: " + e.message; }
                     }
-                    
+
                     if (document.readyState === 'complete') start(); else window.addEventListener('load', start);
                 </script>
                 <script>
                     window.addEventListener('keydown', function(e) {
                         if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
                         var key = e.key.toLowerCase();
-                        if (key === 'arrowleft' || key === 'a') { e.preventDefault(); e.stopPropagation(); window.readerPrev(); return false; }
-                        else if (key === 'arrowright' || key === 'd') { e.preventDefault(); e.stopPropagation(); window.readerNext(); return false; }
+                        if (key === 'arrowleft' || key === 'a') { e.preventDefault(); window.readerPrev(); }
+                        else if (key === 'arrowright' || key === 'd') { e.preventDefault(); window.readerNext(); }
                     }, true);
 
                     window.readerZoomIn = function() {
@@ -430,13 +430,13 @@ object EpubParser {
                              forceBreakBefore(el);
                              setTimeout(function() {
                                  var rect = el.getBoundingClientRect();
-                                 var targetL = Math.floor((wrapper.scrollLeft + rect.left) / wrapper.clientWidth) * wrapper.clientWidth;
+                                 var targetL = Math.round((wrapper.scrollLeft + rect.left) / wrapper.clientWidth) * wrapper.clientWidth;
                                  wrapper.scrollTo({ left: targetL, behavior: 'instant' });
-                                 setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 300);
+                                 setTimeout(function() { findCurrentAnchor(); }, 300);
                              }, 10);
                          }
                     };
-                    
+
                     window.jumpToMatch = function(id) {
                          var hl = document.querySelectorAll('.active-match');
                          for(var i=0; i<hl.length; i++) { hl[i].classList.remove('active-match'); }
@@ -446,9 +446,8 @@ object EpubParser {
                              forceBreakBefore(el);
                              setTimeout(function() {
                                  var rect = el.getBoundingClientRect();
-                                 var targetL = Math.floor((wrapper.scrollLeft + rect.left) / wrapper.clientWidth) * wrapper.clientWidth;
+                                 var targetL = Math.round((wrapper.scrollLeft + rect.left) / wrapper.clientWidth) * wrapper.clientWidth;
                                  wrapper.scrollTo({ left: targetL, behavior: 'instant' });
-                                 setTimeout(function() { updateProgress(); }, 300);
                              }, 10);
                          }
                     };
@@ -458,16 +457,16 @@ object EpubParser {
                             query = (query || "").trim().toLowerCase();
                             var hl = document.querySelectorAll('.search-highlight');
                             for(var i=0; i<hl.length; i++) {
-                                var span = hl[i]; var p = span.parentNode; 
+                                var span = hl[i]; var p = span.parentNode;
                                 if(p) { p.replaceChild(document.createTextNode(span.textContent), span); p.normalize(); }
                             }
                             searchMatches = [];
-                            if (!query) { return; }
+                            if (!query) { document.body.classList.remove('search-active'); return; }
 
                             var walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
                             var node; var textNodes = [];
-                            while(node = walker.nextNode()) { 
-                                if(node.parentNode.tagName !== 'SCRIPT' && node.parentNode.tagName !== 'STYLE') textNodes.push(node); 
+                            while(node = walker.nextNode()) {
+                                if(node.parentNode.tagName !== 'SCRIPT' && node.parentNode.tagName !== 'STYLE') textNodes.push(node);
                             }
 
                             var matchCount = 0;
@@ -479,19 +478,19 @@ object EpubParser {
                                     var span = document.createElement('span');
                                     span.className = 'search-highlight'; span.id = 'search-match-' + matchCount;
                                     span.textContent = text.substring(idx, idx + query.length);
-                                    
+
                                     var snipStart = Math.max(0, idx - 40);
                                     var snipEnd = Math.min(text.length, idx + query.length + 40);
                                     var snippet = text.substring(snipStart, idx) + "<b>" + span.textContent + "</b>" + text.substring(idx + query.length, snipEnd);
                                     searchMatches.push({ id: span.id, text: (snipStart > 0 ? "... " : "") + snippet.replace(/\s+/g, ' ') + (snipEnd < text.length ? " ..." : "") });
-                                    
+
                                     var range = document.createRange();
                                     range.setStart(tNode, idx); range.setEnd(tNode, idx + query.length);
                                     range.surroundContents(span);
                                     matchCount++; if (matchCount > 500) break;
                                 }
                             }
-                            // Do not remove search-active globally based on match count, rely on native dialog state instead
+                            document.body.classList.toggle('search-active', searchMatches.length > 0);
                             if(window.readerBridge && window.readerBridge.sendSearchResults) {
                                 var res = "";
                                 for(var m=0; m<searchMatches.length; m++) { res += searchMatches[m].id + "|||" + searchMatches[m].text + (m < searchMatches.length - 1 ? "|||" : ""); }
@@ -571,13 +570,13 @@ object EpubParser {
                 </svg>
                 <div style="cursor: pointer;">
                     <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v3.0.0 (Stable)</div>
-                    
+
                     <div style="font-size: 14px; line-height: 1.8; margin-bottom: 20px;">
                         <div style="font-weight: bold; color: var(--text);">New in this version:</div>
                         <div>• Concentration Mode (Auto-hide on focus loss)</div>
                         <div>• Instant Search with Snippets & Direct Jump</div>
                     </div>
-                    
+
                     <div style="font-size: 14px; line-height: 1.8; margin-bottom: 20px; opacity: 0.9;">
                         <div style="font-weight: bold; color: var(--text);">新版本特性：</div>
                         <div>• 隐私隐匿专注模式 (失去焦点自动隐藏)</div>
@@ -589,7 +588,7 @@ object EpubParser {
                         <div>• 集中モード (フォーカス喪失時に自動的に非表示)</div>
                         <div>• インスタント検索、スニペット表示とジャンプ</div>
                     </div>
-                    
+
                     <div style="font-size: 13px; margin-top: 30px; border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px;">
                         Click anywhere to open an EPUB / 点击此处打开书籍 / クリックして開く
                     </div>
