@@ -67,7 +67,7 @@ class ProgressDialog(project: Project) : DialogWrapper(project, false) {
     override fun createActions() = emptyArray<Action>()
 }
 
-class SettingsDialog(project: Project, private val service: ReaderService) : DialogWrapper(project, true) {
+class SettingsDialog(project: Project, private val service: ReaderService) : DialogWrapper(project, false, IdeModalityType.MODELESS) {
     init {
         title = "Settings"
         init()
