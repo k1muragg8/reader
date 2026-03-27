@@ -130,11 +130,13 @@ object EpubParser {
                     /* Disable all book links */
                     a { pointer-events: none !important; cursor: default !important; color: inherit !important; text-decoration: none !important; }
 
-                    /* Calibration for perfect column alignment */
+                    /* Calibration for perfect column alignment & Anti-Tearing (Requirement 13) */
                     #reader-text { 
                         padding: 0 !important; margin: 0 !important; box-sizing: border-box; 
                         column-fill: auto; column-gap: 0 !important; column-width: 100% !important;
+                        scroll-snap-type: x mandatory;
                     }
+                    .chapter { break-before: column; scroll-snap-align: start; }
                     .page-content { padding: 8px !important; box-sizing: border-box; }
                     
                     /* Extreme One-line mode (Height < 35px) */
@@ -147,9 +149,11 @@ object EpubParser {
                     .search-highlight { background-color: #ffeb3b; color: #000; border-radius: 2px; }
                     .active-match { background-color: #ff9800 !important; color: #fff !important; box-shadow: 0 0 4px rgba(0,0,0,0.4); }
 
-                    /* --- 隐私与隐匿功能：焦点失焦时瞬间隐藏内容 --- */
-                    body.focus-lost:not(.search-active):not(.dialog-active) #reader-text { opacity: 0.05 !important; pointer-events: none; transition-delay: 0.5s; }
-                    #reader-text { transition: opacity 0.2s ease-in-out; }
+                    /* --- Privacy: Absolute focus-lost hiding (Requirement 14) --- */
+                    body.focus-lost:not(.search-active):not(.dialog-active) #content { 
+                        opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; transition-delay: 0s; 
+                    }
+                    #content { transition: opacity 0.2s ease-in-out; }
                     
                     #diag { position: fixed; top: 0; left: 0; font-size: 9px; background: rgba(0,0,0,0.8); color: #0f0; z-index: 10000; padding: 2px; display: none; pointer-events: none; }
                     body.debug-mode #diag { display: block; }
@@ -162,7 +166,7 @@ object EpubParser {
                 </style>
             </head>
             <body>
-                <div id="diag" style="display:block !important; position:fixed; top:0; left:0; z-index:99999; background:rgba(0,0,0,0.8); color:#0f0; padding:2px; font-size:10px;">Initializing v2.2.0...</div>
+                <div id="diag" style="display:block !important; position:fixed; top:0; left:0; z-index:99999; background:rgba(0,0,0,0.8); color:#0f0; padding:2px; font-size:10px;">Initializing v3.0.0...</div>
                 <div id="content">
                     <div id="reader-wrapper" tabindex="0">
                         <div id="reader-text">$contentHtml</div>
@@ -272,20 +276,19 @@ object EpubParser {
                     }
 
                     function updateProgress() {
-                        if (isResizing) return;
-                        if (progressTimeout) clearTimeout(progressTimeout);
-                        progressTimeout = setTimeout(function() {
-                             if (!wrapper || !window.readerBridge || !window.readerBridge.sendProgressInfo) return;
-                             var w = wrapper.clientWidth;
-                             if (w <= 0) return;
-                             var scrollW = wrapper.scrollWidth;
-                             var cur = Math.ceil((wrapper.scrollLeft + 1) / w);
-                             var total = Math.ceil(scrollW / w) || 1;
-                             var maxS = scrollW - w;
-                             var pct = maxS > 0 ? Math.round((wrapper.scrollLeft / maxS) * 100) : 0;
-                             window.readerBridge.sendProgressInfo(cur + ' / ' + total + ' (' + pct + '%)');
-                        }, 100);
+                        if (isResizing || !window.readerBridge || !window.readerBridge.sendProgressInfo) return;
+                        var w = wrapper.clientWidth; if (w <= 0) return;
+                        var cur = Math.round(wrapper.scrollLeft / w) + 1;
+                        var total = Math.round(wrapper.scrollWidth / w) || 1;
+                        var maxS = wrapper.scrollWidth - w;
+                        var pct = maxS > 0 ? Math.round((wrapper.scrollLeft / maxS) * 100) : 0;
+                        window.readerBridge.sendProgressInfo(cur + ' / ' + total + ' (' + pct + '%)');
                     }
+                    
+                    /* Requirement 12: Implementation of Progress Info Request */
+                    window.requestProgressInfo = function() {
+                        updateProgress();
+                    };
 
                     function start() {
                         try {
@@ -540,7 +543,7 @@ object EpubParser {
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
                 <div style="cursor: pointer;">
-                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v2.2.0 (Stable)</div>
+                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v3.0.0 (Stable)</div>
                     
                     <div style="font-size: 14px; line-height: 1.8; margin-bottom: 20px;">
                         <div style="font-weight: bold; color: var(--text);">New in this version:</div>
