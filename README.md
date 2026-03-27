@@ -1,7 +1,15 @@
-# IntelliJ Platform Plugin Template
+# Reader Master
 
 [![Twitter Follow](https://img.shields.io/badge/follow-%40JBPlatform-1DA1F2?logo=twitter)](https://twitter.com/JBPlatform)
 [![Developers Forum](https://img.shields.io/badge/JetBrains%20Platform-Join-blue)][jb:forum]
+
+## 更新日志 (Changelog)
+
+### v1.4.5 (最新版本)
+* **修复**: 修复了阅读器中点击章节或搜索结果时无法正确跳转的问题（修正了页面滚动逻辑计算）。
+* **调整**: 修复了设置中调整字体大小失效的问题，并根据需求移除了调整字体格式的功能，精简了设置面板。
+
+---
 
 ## Plugin template structure
 

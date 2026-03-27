@@ -97,14 +97,6 @@ class SettingsDialog(project: Project, private val service: ReaderService) : Dia
         themePanel.add(btnSepia)
         themePanel.add(btnDark)
 
-        // Font Family
-        val fontPanel = JPanel(FlowLayout(FlowLayout.LEFT))
-        fontPanel.add(JLabel("Font:"))
-        val btnSans = JButton("Sans-Serif").apply { addActionListener { service.setFontFamily("sans") } }
-        val btnSerif = JButton("Serif").apply { addActionListener { service.setFontFamily("serif") } }
-        fontPanel.add(btnSans)
-        fontPanel.add(btnSerif)
-
         // Font Size
         val sizePanel = JPanel(FlowLayout(FlowLayout.LEFT))
         sizePanel.add(JLabel("Size:"))
@@ -114,7 +106,6 @@ class SettingsDialog(project: Project, private val service: ReaderService) : Dia
         sizePanel.add(btnZoomIn)
 
         panel.add(themePanel)
-        panel.add(fontPanel)
         panel.add(sizePanel)
 
         return panel
