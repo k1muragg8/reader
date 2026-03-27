@@ -276,7 +276,7 @@ class ReaderService(private val project: Project) {
         // Removed immediate false
     }
 
-    private fun setDialogActive(active: Boolean) {
+    fun setDialogActive(active: Boolean) {
         browser?.cefBrowser?.executeJavaScript("if(window.setDialogActive) window.setDialogActive($active);", null, 0)
     }
 

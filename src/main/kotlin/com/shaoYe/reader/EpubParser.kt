@@ -77,37 +77,6 @@ object EpubParser {
                         scroll-snap-type: none !important;
                     }
 
-                    /* Removing #toolbar-trigger as we use body hover now */
-
-                    #toolbar {
-                        position: fixed; top: 0; left: 0; right: 0; height: 36px;
-                        background: var(--sidebar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-                        display: grid; grid-template-columns: 1fr auto 1fr;
-                        align-items: center; padding: 0 8px; z-index: 1002; user-select: none;
-                        transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-                        border-bottom: 0.5px solid var(--border);
-                    }
-                    /* Show toolbar when body has 'hovering' class or when settings are open */
-                    body.hovering #toolbar, body.settings-open #toolbar {
-                        /* We remove the hover toolbar entirely since actions are now in the native IDE Title Bar */
-                        /* transform: translateY(0); */
-                    }
-                    #toolbar { display: none !important; }
-                    
-                    /* Sidebar z-index adjustment if needed, but 9999 is fine */
-
-                    .toolbar-group { display: flex; align-items: center; gap: 4px; }
-                    .toolbar-group:nth-child(1) { justify-self: start; }
-                    .toolbar-group:nth-child(2) { justify-self: center; }
-                    .toolbar-group:nth-child(3) { justify-self: end; }
-
-                    .icon-btn {
-                        width: 24px; height: 24px; background: transparent; border: none;
-                        padding: 4px; cursor: pointer; display: flex; align-items: center;
-                        justify-content: center; border-radius: 4px; transition: all 0.2s ease; opacity: 0.8;
-                    }
-                    .icon-btn:hover { opacity: 1; background: var(--hover-bg); }
-                    .icon-btn:active { transform: scale(0.95); }
 
                     body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-family); }
                     
@@ -120,9 +89,9 @@ object EpubParser {
                     .page-content { padding: 0; margin: 0; width: 100%; box-sizing: border-box; }
                     h1, h2, h3, h4, h5, h6 { break-inside: avoid; break-after: avoid; font-weight: bold; line-height: 1.2; }
                     h1, h2, h3 { line-height: 1.2; margin: 0 !important; padding: 0 !important; font-weight: 600; break-after: avoid; }
-                    h1 { font-size: 1.3em !important; }
-                    h2 { font-size: 1.2em !important; }
-                    h3 { font-size: 1.1em !important; }
+                    h1 { font-size: 1.2em !important; }
+                    h2 { font-size: 1.1em !important; }
+                    h3 { font-size: 1.05em !important; }
                     
                     p { margin: 0 !important; padding: 5px 0 !important; line-height: 1.6; text-align: justify; }
                     img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 10px auto; border-radius: 8px; break-inside: avoid; }
@@ -245,11 +214,17 @@ object EpubParser {
                              var w = forcedWidth || wrapper.clientWidth;
                              var h = wrapper.clientHeight;
                              if(w > 20) {
+                                 // Requirement 1: 5px margins all around
+                                 // We use padding on #reader-text, so columnWidth needs to account for this.
+                                 // Left padding 5px, right padding 5px => column width should be w - 10px
+                                 // The column gap should be exactly 10px so the next column starts cleanly at w
                                  textContainer.style.width = 'auto';
                                  textContainer.style.minWidth = '100vw'; 
-                                 textContainer.style.columnWidth = Math.floor(w) + 'px';
-                                 textContainer.style.columnGap = '0px';
-                                 textContainer.style.height = (h || 500) + 'px';
+                                 textContainer.style.columnWidth = Math.floor(w - 10) + 'px';
+                                 textContainer.style.columnGap = '10px';
+                                 textContainer.style.height = (h - 10) + 'px'; // Top and bottom 5px padding
+                                 textContainer.style.setProperty('padding', '5px', 'important');
+                                 textContainer.style.setProperty('margin', '0px', 'important');
                              }
                         } catch(e) {}
                     }
@@ -263,8 +238,8 @@ object EpubParser {
                         var minScore = Infinity;
                         for (var i = 0; i < allElements.length; i++) {
                             var rect = allElements[i].getBoundingClientRect();
-                            if (rect.left >= -50 && rect.left < w) {
-                                var score = (Math.abs(rect.top) * 5) + Math.abs(rect.left);
+                            if (rect.left >= 0 && rect.left < w) {
+                                var score = Math.abs(rect.top);
                                 if (score < minScore) {
                                     minScore = score;
                                     bestIndex = i;
@@ -279,7 +254,8 @@ object EpubParser {
                         if (isResizing || !window.readerBridge || !window.readerBridge.sendProgressInfo) return;
                         var w = wrapper.clientWidth; if (w <= 0) return;
                         var cur = Math.round(wrapper.scrollLeft / w) + 1;
-                        var total = Math.round(wrapper.scrollWidth / w) || 1;
+                        // Use Math.ceil to capture the exact total number of pages based on actual scrollWidth
+                        var total = Math.max(1, Math.ceil(wrapper.scrollWidth / w));
                         var maxS = wrapper.scrollWidth - w;
                         var pct = maxS > 0 ? Math.round((wrapper.scrollLeft / maxS) * 100) : 0;
                         window.readerBridge.sendProgressInfo(cur + ' / ' + total + ' (' + pct + '%)');
@@ -345,21 +321,42 @@ object EpubParser {
                                   }
                              }, { passive: false });
 
+                             // Catch global wheel events in case mouse is not exactly over the wrapper
+                             window.addEventListener('wheel', function(e) {
+                                  if(e.target === wrapper || wrapper.contains(e.target)) return;
+                                  e.preventDefault(); var now = Date.now();
+                                  if (now - lastWheelTime > 200) {
+                                      if (e.deltaY > 0 || e.deltaX > 0) window.readerNext();
+                                      else if (e.deltaY < 0 || e.deltaX < 0) window.readerPrev();
+                                      lastWheelTime = now;
+                                  }
+                             }, { passive: false });
+
                              if (typeof ResizeObserver !== 'undefined') {
                                  var observer = new ResizeObserver(function() {
                                      if (!wrapper || isResizing) return;
                                      isResizing = true; wrapper.classList.add('resizing');
-                                     findCurrentAnchor(); updateLayout();
-                                     if (allElements[currentAnchorIndex]) {
-                                         var el = allElements[currentAnchorIndex];
+                                     var oldAnchorIdx = currentAnchorIndex;
+                                     updateLayout();
+                                     if (allElements[oldAnchorIdx]) {
+                                         var el = allElements[oldAnchorIdx];
+                                         // Requirement 9: anchor first line
+                                         if (typeof forceBreakBefore === 'function') {
+                                             forceBreakBefore(el);
+                                         }
                                          setTimeout(function() {
                                              var rect = el.getBoundingClientRect();
-                                             var targetL = wrapper.scrollLeft + rect.left - 8;
+                                             var targetL = Math.round((wrapper.scrollLeft + rect.left) / wrapper.clientWidth) * wrapper.clientWidth;
                                              wrapper.scrollTo({left: targetL, behavior: 'instant'});
-                                         }, 0);
+                                         }, 10);
                                      }
                                      if(resizeTimer) clearTimeout(resizeTimer);
-                                     resizeTimer = setTimeout(function() { isResizing = false; if(wrapper) wrapper.classList.remove('resizing'); updateProgress(); }, 300);
+                                     resizeTimer = setTimeout(function() {
+                                         isResizing = false;
+                                         if(wrapper) wrapper.classList.remove('resizing');
+                                         findCurrentAnchor();
+                                         updateProgress();
+                                     }, 300);
                                  });
                                  observer.observe(wrapper);
                              }
@@ -368,6 +365,14 @@ object EpubParser {
                              updateLayout(); 
                              setTimeout(function() { 
                                  updateLayout(); findCurrentAnchor(); 
+
+                                 // Requirement 6: Disable all links strictly
+                                 var allLinks = document.querySelectorAll('a');
+                                 for (var k = 0; k < allLinks.length; k++) {
+                                     allLinks[k].onclick = function() { return false; };
+                                     allLinks[k].removeAttribute("href");
+                                 }
+
                                  if(window.readerBridge && window.readerBridge.ready) window.readerBridge.ready();
                                  if(d) { d.textContent = "OK: Elements " + allElements.length; setTimeout(function(){ d.style.display='none'; }, 2000); }
                              }, 500);
@@ -378,12 +383,12 @@ object EpubParser {
                     if (document.readyState === 'complete') start(); else window.addEventListener('load', start);
                 </script>
                 <script>
-                    document.addEventListener('keydown', function(e) {
+                    window.addEventListener('keydown', function(e) {
                         if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
                         var key = e.key.toLowerCase();
                         if (key === 'arrowleft' || key === 'a') { e.preventDefault(); window.readerPrev(); }
                         else if (key === 'arrowright' || key === 'd') { e.preventDefault(); window.readerNext(); }
-                    });
+                    }, true);
 
                     window.readerZoomIn = function() {
                         var root = document.documentElement;
@@ -404,13 +409,34 @@ object EpubParser {
                         }
                     };
 
+                    function forceBreakBefore(el) {
+                         var prev = document.querySelectorAll('.forced-break');
+                         for(var i=0; i<prev.length; i++) {
+                             prev[i].style.breakBefore = '';
+                             prev[i].classList.remove('forced-break');
+                         }
+                         if (el) {
+                             var blockEl = el;
+                             while(blockEl && blockEl !== textContainer && window.getComputedStyle(blockEl).display === 'inline') {
+                                 blockEl = blockEl.parentElement;
+                             }
+                             if(blockEl && blockEl !== textContainer) {
+                                 blockEl.style.breakBefore = 'column';
+                                 blockEl.classList.add('forced-break');
+                             }
+                         }
+                    }
+
                     window.scrollToId = function(id) {
                          var el = document.getElementById(id) || document.querySelector('[id="' + id + '"]');
                          if(el) {
-                             var rect = el.getBoundingClientRect();
-                             var targetL = wrapper.scrollLeft + rect.left - 8;
-                             wrapper.scrollTo({ left: targetL, behavior: 'instant' });
-                             setTimeout(function() { findCurrentAnchor(); }, 300);
+                             forceBreakBefore(el);
+                             setTimeout(function() {
+                                 var rect = el.getBoundingClientRect();
+                                 var targetL = Math.round((wrapper.scrollLeft + rect.left) / wrapper.clientWidth) * wrapper.clientWidth;
+                                 wrapper.scrollTo({ left: targetL, behavior: 'instant' });
+                                 setTimeout(function() { findCurrentAnchor(); }, 300);
+                             }, 10);
                          }
                     };
                     
@@ -420,9 +446,12 @@ object EpubParser {
                          var el = document.getElementById(id);
                          if(el) {
                              el.classList.add('active-match');
-                             var rect = el.getBoundingClientRect();
-                             var targetL = wrapper.scrollLeft + rect.left - 8;
-                             wrapper.scrollTo({ left: targetL, behavior: 'instant' });
+                             forceBreakBefore(el);
+                             setTimeout(function() {
+                                 var rect = el.getBoundingClientRect();
+                                 var targetL = Math.round((wrapper.scrollLeft + rect.left) / wrapper.clientWidth) * wrapper.clientWidth;
+                                 wrapper.scrollTo({ left: targetL, behavior: 'instant' });
+                             }, 10);
                          }
                     };
 
