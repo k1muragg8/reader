@@ -13,10 +13,15 @@ import javax.swing.*
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 
-class TocDialog(project: Project, private val tocItems: List<EpubParser.TocItem>, private val service: ReaderService) : DialogWrapper(project, true) {
+class TocDialog(project: Project, private val tocItems: List<EpubParser.TocItem>, private val service: ReaderService) : DialogWrapper(project, false, IdeModalityType.MODELESS) {
     init {
         title = "Table of Contents"
         init()
+    }
+
+    override fun dispose() {
+        service.setDialogActive(false)
+        super.dispose()
     }
 
     override fun createCenterPanel(): JComponent {
@@ -41,7 +46,7 @@ class TocDialog(project: Project, private val tocItems: List<EpubParser.TocItem>
     override fun createActions() = emptyArray<Action>()
 }
 
-class ProgressDialog(project: Project) : DialogWrapper(project, false) {
+class ProgressDialog(project: Project) : DialogWrapper(project, false, IdeModalityType.MODELESS) {
     private val infoLabel = JLabel("Calculating progress...", SwingConstants.CENTER)
 
     init {
@@ -71,6 +76,11 @@ class SettingsDialog(project: Project, private val service: ReaderService) : Dia
     init {
         title = "Settings"
         init()
+    }
+
+    override fun dispose() {
+        service.setDialogActive(false)
+        super.dispose()
     }
 
     override fun createCenterPanel(): JComponent {
