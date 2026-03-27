@@ -331,7 +331,7 @@ object EpubParser {
                                              var rect = el.getBoundingClientRect();
                                              var wRect = wrapper.getBoundingClientRect();
                                              var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / wrapper.clientWidth) * wrapper.clientWidth;
-                                             wrapper.scrollTo({left: targetL, behavior: 'instant'});
+                                 wrapper.scrollLeft = targetL;
                                          }, 10);
                                      }
 
@@ -430,7 +430,7 @@ object EpubParser {
                                  var rect = el.getBoundingClientRect();
                                  var wRect = wrapper.getBoundingClientRect();
                                  var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / wrapper.clientWidth) * wrapper.clientWidth;
-                                 wrapper.scrollTo({ left: targetL, behavior: 'instant' });
+                                 wrapper.scrollLeft = targetL;
                                  setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 300);
                              }, 10);
                          }
@@ -447,7 +447,7 @@ object EpubParser {
                                  var rect = el.getBoundingClientRect();
                                  var wRect = wrapper.getBoundingClientRect();
                                  var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / wrapper.clientWidth) * wrapper.clientWidth;
-                                 wrapper.scrollTo({ left: targetL, behavior: 'instant' });
+                                 wrapper.scrollLeft = targetL;
                                  setTimeout(function() { updateProgress(); }, 300);
                              }, 10);
                          }
