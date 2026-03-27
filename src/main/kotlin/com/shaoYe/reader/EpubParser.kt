@@ -228,10 +228,12 @@ object EpubParser {
                         
                         var bestIndex = 0;
                         var minScore = Infinity;
+                        var wRect = wrapper.getBoundingClientRect();
                         for (var i = 0; i < allElements.length; i++) {
                             var rect = allElements[i].getBoundingClientRect();
-                            if (rect.left >= 0 && rect.left < w) {
-                                var score = Math.abs(rect.top);
+                            var relLeft = rect.left - wRect.left;
+                            if (relLeft >= 0 && relLeft < w) {
+                                var score = Math.abs(rect.top - wRect.top);
                                 if (score < minScore) {
                                     minScore = score;
                                     bestIndex = i;
@@ -338,7 +340,8 @@ object EpubParser {
                                          }
                                          setTimeout(function() {
                                              var rect = el.getBoundingClientRect();
-                                             var targetL = Math.floor((wrapper.scrollLeft + rect.left) / wrapper.clientWidth) * wrapper.clientWidth;
+                                             var wRect = wrapper.getBoundingClientRect();
+                                             var targetL = Math.floor((wrapper.scrollLeft + rect.left - wRect.left) / wrapper.clientWidth) * wrapper.clientWidth;
                                              wrapper.scrollTo({left: targetL, behavior: 'instant'});
                                          }, 10);
                                      }
@@ -430,7 +433,8 @@ object EpubParser {
                              forceBreakBefore(el);
                              setTimeout(function() {
                                  var rect = el.getBoundingClientRect();
-                                 var targetL = Math.floor((wrapper.scrollLeft + rect.left) / wrapper.clientWidth) * wrapper.clientWidth;
+                                 var wRect = wrapper.getBoundingClientRect();
+                                 var targetL = Math.floor((wrapper.scrollLeft + rect.left - wRect.left) / wrapper.clientWidth) * wrapper.clientWidth;
                                  wrapper.scrollTo({ left: targetL, behavior: 'instant' });
                                  setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 300);
                              }, 10);
@@ -446,7 +450,8 @@ object EpubParser {
                              forceBreakBefore(el);
                              setTimeout(function() {
                                  var rect = el.getBoundingClientRect();
-                                 var targetL = Math.floor((wrapper.scrollLeft + rect.left) / wrapper.clientWidth) * wrapper.clientWidth;
+                                 var wRect = wrapper.getBoundingClientRect();
+                                 var targetL = Math.floor((wrapper.scrollLeft + rect.left - wRect.left) / wrapper.clientWidth) * wrapper.clientWidth;
                                  wrapper.scrollTo({ left: targetL, behavior: 'instant' });
                                  setTimeout(function() { updateProgress(); }, 300);
                              }, 10);
