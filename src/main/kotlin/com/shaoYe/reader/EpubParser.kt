@@ -409,7 +409,8 @@ object EpubParser {
                          }
                          if (el) {
                              var blockEl = el;
-                             while(blockEl && blockEl !== textContainer && window.getComputedStyle(blockEl).display === 'inline') {
+                             var inlineTags = {'SPAN':1, 'A':1, 'B':1, 'I':1, 'STRONG':1, 'EM':1, 'U':1, 'FONT':1, 'SUB':1, 'SUP':1, 'MARK':1};
+                             while(blockEl && blockEl !== textContainer && inlineTags[blockEl.tagName]) {
                                  blockEl = blockEl.parentElement;
                              }
                              if(blockEl && blockEl !== textContainer) {
@@ -459,7 +460,19 @@ object EpubParser {
                             var hl = document.querySelectorAll('.search-highlight');
                             for(var i=0; i<hl.length; i++) {
                                 var span = hl[i]; var p = span.parentNode; 
-                                if(p) { p.replaceChild(document.createTextNode(span.textContent), span); p.normalize(); }
+                                if(p) {
+                                    var txt = document.createTextNode(span.textContent);
+                                    p.replaceChild(txt, span);
+                                    if(txt.previousSibling && txt.previousSibling.nodeType === 3) {
+                                        txt.previousSibling.nodeValue += txt.nodeValue;
+                                        p.removeChild(txt);
+                                        txt = txt.previousSibling;
+                                    }
+                                    if(txt.nextSibling && txt.nextSibling.nodeType === 3) {
+                                        txt.nodeValue += txt.nextSibling.nodeValue;
+                                        p.removeChild(txt.nextSibling);
+                                    }
+                                }
                             }
                             searchMatches = [];
                             if (!query) { return; }
