@@ -110,7 +110,7 @@ object EpubParser {
                     /* Extreme One-line mode (Height < 35px) */
                     @media (max-height: 35px) {
                         .page-content { padding: 0 !important; }
-                        h1, h2, h3, p { font-size: 14px !important; line-height: 1.0 !important; padding: 0 !important; margin: 0 !important; }
+                        h1, h2, h3, p { font-size: var(--font-size) !important; line-height: 1.0 !important; padding: 0 !important; margin: 0 !important; }
                     }
 
                     ::-webkit-scrollbar { display: none !important; }
