@@ -516,21 +516,25 @@ object EpubParser {
                          if(el) {
                              var ch = el.closest('.chapter');
                              var cIdx = chapterElements.indexOf(ch);
+                             var delay = 0;
                              if (cIdx !== -1 && cIdx !== currentChapterIndex) {
                                  switchChapter(cIdx, 0);
+                                 delay = 100;
                              }
-                             forceBreakBefore(el);
-                             requestAnimationFrame(function() {
+                             setTimeout(function() {
+                                 forceBreakBefore(el);
                                  requestAnimationFrame(function() {
-                                     if (!el || !wrapper) return;
-                                     var rect = el.getBoundingClientRect();
-                                     var wRect = wrapper.getBoundingClientRect();
-                                     if (layoutCache.w <= 0) refreshLayoutCache();
-                                     var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / layoutCache.w) * layoutCache.w;
-                                     wrapper.scrollLeft = targetL;
-                                     setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 150);
+                                     requestAnimationFrame(function() {
+                                         if (!el || !wrapper) return;
+                                         var rect = el.getBoundingClientRect();
+                                         var wRect = wrapper.getBoundingClientRect();
+                                         if (layoutCache.w <= 0) refreshLayoutCache();
+                                         var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / layoutCache.w) * layoutCache.w;
+                                         wrapper.scrollLeft = targetL;
+                                         setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 150);
+                                     });
                                  });
-                             });
+                             }, delay);
                          }
                     };
                     
@@ -542,21 +546,25 @@ object EpubParser {
                              el.classList.add('active-match');
                              var ch = el.closest('.chapter');
                              var cIdx = chapterElements.indexOf(ch);
+                             var delay = 0;
                              if (cIdx !== -1 && cIdx !== currentChapterIndex) {
                                  switchChapter(cIdx, 0);
+                                 delay = 100;
                              }
-                             forceBreakBefore(el);
-                             requestAnimationFrame(function() {
+                             setTimeout(function() {
+                                 forceBreakBefore(el);
                                  requestAnimationFrame(function() {
-                                    if (!el || !wrapper) return;
-                                    var rect = el.getBoundingClientRect();
-                                    var wRect = wrapper.getBoundingClientRect();
-                                    if (layoutCache.w <= 0) refreshLayoutCache();
-                                    var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / layoutCache.w) * layoutCache.w;
-                                    wrapper.scrollLeft = targetL;
-                                    setTimeout(function() { updateProgress(); }, 150);
+                                     requestAnimationFrame(function() {
+                                        if (!el || !wrapper) return;
+                                        var rect = el.getBoundingClientRect();
+                                        var wRect = wrapper.getBoundingClientRect();
+                                        if (layoutCache.w <= 0) refreshLayoutCache();
+                                        var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / layoutCache.w) * layoutCache.w;
+                                        wrapper.scrollLeft = targetL;
+                                        setTimeout(function() { updateProgress(); }, 150);
+                                     });
                                  });
-                             });
+                             }, delay);
                          }
                     };
 
@@ -616,7 +624,7 @@ object EpubParser {
                                 for(var m=0; m<searchMatches.length; m++) { res += searchMatches[m].id + "|||" + searchMatches[m].text + (m < searchMatches.length - 1 ? "|||" : ""); }
                                 window.readerBridge.sendSearchResults(res || "NONE");
                             }
-                        } catch(e) { }
+                        } catch(e) { console.error("Search error: ", e); }
                     };
 
                     window.setDialogActive = function(a) { document.body.classList.toggle('dialog-active', !!a); };
