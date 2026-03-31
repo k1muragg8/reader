@@ -357,9 +357,10 @@ object EpubParser {
                              
                              if (allElements.length === 0) {
                                  var allNodes = textContainer.querySelectorAll('*');
+                                 var ignoredTags = {'STYLE':1, 'SCRIPT':1, 'META':1, 'HEAD':1, 'TITLE':1, 'NOSCRIPT':1};
                                  for(var j=0; j<allNodes.length; j++) {
-                                     var el = allNodes[j]; var s = window.getComputedStyle(el);
-                                     if (el.textContent.trim().length > 0 && s.display !== 'none') allElements.push(el);
+                                     var el = allNodes[j];
+                                     if (el.textContent.trim().length > 0 && !ignoredTags[el.tagName]) allElements.push(el);
                                  }
                              }
                              
