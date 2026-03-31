@@ -214,7 +214,9 @@ object EpubParser {
                         // Force layout refresh and snap
                         setTimeout(function() {
                             refreshLayoutCache();
-                            if (snapTo === 'end') {
+                            if (snapTo === 'skip') {
+                                // Skip snapping scroll position to avoid overriding external jumps
+                            } else if (snapTo === 'end') {
                                 wrapper.scrollLeft = layoutCache.maxScroll;
                             } else if (typeof snapTo === 'number') {
                                 wrapper.scrollLeft = snapTo;
@@ -513,23 +515,29 @@ object EpubParser {
                          if (!el) {
                              try { el = document.querySelector('[id="' + CSS.escape(id) + '"]'); } catch(e) {}
                          }
+                         if (!el) {
+                             try { el = document.querySelector('[name="' + CSS.escape(id) + '"]'); } catch(e) {}
+                         }
                          if(el) {
                              var ch = el.closest('.chapter');
                              var cIdx = chapterElements.indexOf(ch);
                              var delay = 0;
                              if (cIdx !== -1 && cIdx !== currentChapterIndex) {
-                                 switchChapter(cIdx, 0);
-                                 delay = 100;
+                                 switchChapter(cIdx, "skip");
+                                 delay = 150;
                              }
                              setTimeout(function() {
                                  forceBreakBefore(el);
                                  requestAnimationFrame(function() {
                                      requestAnimationFrame(function() {
                                          if (!el || !wrapper) return;
-                                         var rect = el.getBoundingClientRect();
-                                         var wRect = wrapper.getBoundingClientRect();
                                          if (layoutCache.w <= 0) refreshLayoutCache();
-                                         var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / layoutCache.w) * layoutCache.w;
+                                         var targetL = 0;
+                                         if (!el.classList.contains('chapter')) {
+                                             var rect = el.getBoundingClientRect();
+                                             var wRect = wrapper.getBoundingClientRect();
+                                             targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / layoutCache.w) * layoutCache.w;
+                                         }
                                          wrapper.scrollLeft = targetL;
                                          setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 150);
                                      });
@@ -548,18 +556,21 @@ object EpubParser {
                              var cIdx = chapterElements.indexOf(ch);
                              var delay = 0;
                              if (cIdx !== -1 && cIdx !== currentChapterIndex) {
-                                 switchChapter(cIdx, 0);
-                                 delay = 100;
+                                 switchChapter(cIdx, "skip");
+                                 delay = 150;
                              }
                              setTimeout(function() {
                                  forceBreakBefore(el);
                                  requestAnimationFrame(function() {
                                      requestAnimationFrame(function() {
                                         if (!el || !wrapper) return;
-                                        var rect = el.getBoundingClientRect();
-                                        var wRect = wrapper.getBoundingClientRect();
                                         if (layoutCache.w <= 0) refreshLayoutCache();
-                                        var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / layoutCache.w) * layoutCache.w;
+                                        var targetL = 0;
+                                        if (!el.classList.contains('chapter')) {
+                                            var rect = el.getBoundingClientRect();
+                                            var wRect = wrapper.getBoundingClientRect();
+                                            targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / layoutCache.w) * layoutCache.w;
+                                        }
                                         wrapper.scrollLeft = targetL;
                                         setTimeout(function() { updateProgress(); }, 150);
                                      });
@@ -577,14 +588,16 @@ object EpubParser {
                                 if(p) {
                                     var txt = document.createTextNode(span.textContent);
                                     p.replaceChild(txt, span);
-                                    if(txt.previousSibling && txt.previousSibling.nodeType === 3) {
-                                        txt.previousSibling.nodeValue += txt.nodeValue;
+                                    var prev = txt.previousSibling;
+                                    var next = txt.nextSibling;
+                                    if(prev && prev.nodeType === 3) {
+                                        prev.nodeValue += txt.nodeValue;
                                         p.removeChild(txt);
-                                        txt = txt.previousSibling;
+                                        txt = prev;
                                     }
-                                    if(txt.nextSibling && txt.nextSibling.nodeType === 3) {
-                                        txt.nodeValue += txt.nextSibling.nodeValue;
-                                        p.removeChild(txt.nextSibling);
+                                    if(next && next.nodeType === 3) {
+                                        txt.nodeValue += next.nodeValue;
+                                        p.removeChild(next);
                                     }
                                 }
                             }
