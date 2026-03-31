@@ -81,8 +81,9 @@ object EpubParser {
                     body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-family); font-size: var(--font-size) !important; }
                     
                     #content { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-                    #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; outline: none; transition: opacity 0.2s; }
+                    #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; outline: none; transition: opacity 0.2s; will-change: transform; }
                     #reader-wrapper.resizing { cursor: col-resize; opacity: 0.8; }
+                    #reader-wrapper.resizing * { transition: none !important; animation: none !important; }
                     #reader-text { height: 100%; padding: 5px 60px; column-fill: auto; position: relative; }
                     
                     .chapter { break-before: column; }
@@ -102,10 +103,11 @@ object EpubParser {
                     /* Calibration for perfect column alignment & Anti-Tearing (Requirement 13) */
                     #reader-text { 
                         padding: 0 !important; margin: 0 !important; box-sizing: border-box; 
-                        column-fill: auto; column-gap: 0px !important; column-width: 100vw !important;
+                        column-fill: auto;
                     }
                     .chapter { break-before: column; }
-                    .page-content { padding: 5px !important; box-sizing: border-box; height: 100%; }
+                    .chapter:not(.active-chapter) { display: none !important; }
+                    .page-content { padding: 5px !important; box-sizing: border-box; min-height: 100%; }
                     
                     ::-webkit-scrollbar { display: none !important; }
                     .search-highlight { background-color: #ffeb3b; color: #000; border-radius: 2px; }
@@ -163,34 +165,95 @@ object EpubParser {
                     var saveTimeout = null;
                     var progressTimeout = null;
                     var searchMatches = [];
+                    var activeForcedBreaks = []; // Optimization: track forced breaks
+                    var layoutCache = { w: 0, h: 0, scrollWidth: 0, totalPages: 1, maxScroll: 0 };
+                    var lastBridgeTime = 0;
+                    
+                    var currentChapterIndex = 0;
+                    var chapterElements = [];
 
                     // --- Global Functions (Defined early for reliability) ---
                     window.readerNext = function() { 
                         if (!wrapper) return;
-                        var w = wrapper.clientWidth;
+                        if (layoutCache.w <= 0) refreshLayoutCache();
+                        var w = layoutCache.w;
                         if (w <= 0) return;
-                        var curIdx = Math.ceil((wrapper.scrollLeft + 1) / w) - 1;
-                        wrapper.scrollTo({ left: (curIdx + 1) * w, behavior: 'instant' });
+                        var target = (Math.floor((wrapper.scrollLeft + 10) / w) + 1) * w;
+                        if (target > layoutCache.maxScroll + 10) {
+                            if (currentChapterIndex < chapterElements.length - 1) {
+                                switchChapter(currentChapterIndex + 1, 0);
+                            }
+                        } else {
+                            wrapper.scrollTo({ left: target, behavior: 'instant' });
+                        }
                     };
                     window.readerPrev = function() { 
                         if (!wrapper) return;
-                        var w = wrapper.clientWidth;
+                        if (layoutCache.w <= 0) refreshLayoutCache();
+                        var w = layoutCache.w;
                         if (w <= 0) return;
-                        var curIdx = Math.ceil((wrapper.scrollLeft + 1) / w) - 1;
-                        var target = Math.max(0, (curIdx - 1) * w);
-                        wrapper.scrollTo({ left: target, behavior: 'instant' });
-                    };
-                    window.readerRestore = function(s) {
-                        var pct = parseFloat(s);
-                        if(!isNaN(pct)) {
-                            setTimeout(function() {
-                                if (!wrapper) return;
-                                var maxS = wrapper.scrollWidth - wrapper.clientWidth;
-                                wrapper.scrollTo({ left: pct * maxS, behavior: 'instant' });
-                                setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 350);
-                            }, 500);
+                        var target = Math.max(0, (Math.ceil((wrapper.scrollLeft - 10) / w) - 1) * w);
+                        if (wrapper.scrollLeft <= 5) {
+                            if (currentChapterIndex > 0) {
+                                switchChapter(currentChapterIndex - 1, 'end');
+                            }
+                        } else {
+                            wrapper.scrollTo({ left: target, behavior: 'instant' });
                         }
                     };
+
+                    function switchChapter(idx, snapTo) {
+                        if (idx < 0 || idx >= chapterElements.length) return;
+                        currentChapterIndex = idx;
+                        for (var i = 0; i < chapterElements.length; i++) {
+                            var isCurrent = (i === idx);
+                            chapterElements[i].style.display = isCurrent ? 'block' : 'none';
+                            chapterElements[i].classList.toggle('active-chapter', isCurrent);
+                        }
+                        
+                        // Force layout refresh and snap
+                        setTimeout(function() {
+                            refreshLayoutCache();
+                            if (snapTo === 'end') {
+                                wrapper.scrollLeft = layoutCache.maxScroll;
+                            } else if (typeof snapTo === 'number') {
+                                wrapper.scrollLeft = snapTo;
+                            } else {
+                                wrapper.scrollLeft = 0;
+                            }
+                            findCurrentAnchor();
+                            updateProgress();
+                        }, 50);
+                    }
+
+                    window.readerRestore = function(s) {
+                        try {
+                            var parts = s.split('|');
+                            var cIdx = parseInt(parts[0]);
+                            var pct = parseFloat(parts[1]);
+                            if (!isNaN(cIdx)) {
+                                setTimeout(function() {
+                                    switchChapter(cIdx, 0); // Temporary jump to chapter to trigger layout
+                                    setTimeout(function() {
+                                        if (layoutCache.maxScroll > 0) {
+                                            wrapper.scrollLeft = pct * layoutCache.maxScroll;
+                                        }
+                                        findCurrentAnchor();
+                                        updateProgress();
+                                    }, 200);
+                                }, 500);
+                            }
+                        } catch(e) {}
+                    };
+
+                    function refreshLayoutCache() {
+                        if (!wrapper) return;
+                        layoutCache.w = wrapper.clientWidth;
+                        layoutCache.h = wrapper.clientHeight;
+                        layoutCache.scrollWidth = wrapper.scrollWidth;
+                        layoutCache.maxScroll = layoutCache.scrollWidth - layoutCache.w;
+                        layoutCache.totalPages = Math.max(1, Math.ceil(layoutCache.scrollWidth / layoutCache.w));
+                    }
 
                     function updateLayout(forcedWidth) {
                         try {
@@ -198,7 +261,6 @@ object EpubParser {
                              var w = forcedWidth || wrapper.clientWidth;
                              var h = wrapper.clientHeight;
                              if(w > 20) {
-                                 // Requirement 1: uniform small margins
                                  textContainer.style.width = 'auto';
                                  textContainer.style.minWidth = '100vw'; 
                                  textContainer.style.columnWidth = w + 'px';
@@ -206,28 +268,40 @@ object EpubParser {
                                  textContainer.style.height = h + 'px';
                                  textContainer.style.setProperty('padding', '0px', 'important');
                                  textContainer.style.setProperty('margin', '0px', 'important');
+                                 // Update cache after layout changes
+                                 setTimeout(refreshLayoutCache, 50);
                              }
                         } catch(e) {}
                     }
 
                     function findCurrentAnchor() {
-                        if (!allElements || allElements.length === 0 || !wrapper) return;
-                        var w = wrapper.clientWidth;
+                        if (layoutCache.w <= 0) refreshLayoutCache();
+                        var w = layoutCache.w;
                         if (w <= 0) return;
                         
-                        var bestIndex = 0;
-                        var minScore = Infinity;
                         var wRect = wrapper.getBoundingClientRect();
-                        for (var i = 0; i < allElements.length; i++) {
-                            var rect = allElements[i].getBoundingClientRect();
+                        var low = 0, high = allElements.length - 1;
+                        var bestIndex = currentAnchorIndex;
+
+                        // Binary Search for O(log N) instead of O(N)
+                        while (low <= high) {
+                            var mid = Math.floor((low + high) / 2);
+                            var rect = allElements[mid].getBoundingClientRect();
                             var relLeft = rect.left - wRect.left;
-                            if (relLeft >= 0 && relLeft < w) {
-                                var score = Math.abs(rect.top - wRect.top);
-                                if (score < minScore) {
-                                    minScore = score;
-                                    bestIndex = i;
+
+                            if (relLeft < 0) {
+                                low = mid + 1;
+                            } else if (relLeft >= w - 1) {
+                                high = mid - 1;
+                            } else {
+                                bestIndex = mid;
+                                // Scan slightly backward to find the absolute first in this column
+                                for (var j = mid - 1; j >= Math.max(0, mid - 20); j--) {
+                                    var r2 = allElements[j].getBoundingClientRect();
+                                    if (r2.left - wRect.left < 0) break;
+                                    bestIndex = j;
                                 }
-                                if (score < 5) break; 
+                                break;
                             }
                         }
                         currentAnchorIndex = bestIndex;
@@ -235,13 +309,25 @@ object EpubParser {
 
                     function updateProgress() {
                         if (isResizing || !window.readerBridge || !window.readerBridge.sendProgressInfo) return;
-                        var w = wrapper.clientWidth; if (w <= 0) return;
-                        var cur = Math.ceil((wrapper.scrollLeft + 1) / w);
-                        // Use Math.ceil to capture the exact total number of pages based on actual scrollWidth
-                        var total = Math.max(1, Math.ceil(wrapper.scrollWidth / w));
-                        var maxS = wrapper.scrollWidth - w;
-                        var pct = maxS > 0 ? Math.round((wrapper.scrollLeft / maxS) * 100) : 0;
-                        window.readerBridge.sendProgressInfo(cur + ' / ' + total + ' (' + pct + '%)');
+                        var now = Date.now();
+                        if (now - lastBridgeTime < 100) return;
+                        lastBridgeTime = now;
+
+                        if (layoutCache.w <= 0) refreshLayoutCache();
+                        var cur = Math.ceil((wrapper.scrollLeft + 1) / layoutCache.w);
+                        
+                        // Per-chapter percentage
+                        var scrollPct = layoutCache.maxScroll > 0 ? (wrapper.scrollLeft / layoutCache.maxScroll) : 0;
+                        
+                        // Global percentage approximation
+                        var globalPct = Math.round(((currentChapterIndex + scrollPct) / chapterElements.length) * 100);
+                        
+                        window.readerBridge.sendProgressInfo((currentChapterIndex + 1) + '-' + cur + ' / ' + chapterElements.length + ' (' + globalPct + '%)');
+                        
+                        // Save progress in new format: chapterIndex|scrollPct
+                        if (window.isReadyToSave && window.readerBridge.saveProgress) {
+                             window.readerBridge.saveProgress(currentChapterIndex + '|' + scrollPct.toFixed(4));
+                        }
                     }
                     
                     /* Requirement 12: Implementation of Progress Info Request */
@@ -257,10 +343,17 @@ object EpubParser {
                                   setTimeout(start, 200); return;
                              }
                              
-                             // 1. Populate Elements
+                             // 1. Populate Chapters & Elements
+                             var rawChapters = textContainer.querySelectorAll('.chapter');
+                             chapterElements = [];
+                             for(var k=0; k<rawChapters.length; k++) { chapterElements.push(rawChapters[k]); }
+                             
                              var rawNodes = textContainer.querySelectorAll('p, h1, h2, h3, h4, h5, h6, img, li, blockquote, .page-content div, .chapter div');
                              allElements = [];
                              for(var i=0; i<rawNodes.length; i++) { allElements.push(rawNodes[i]); }
+                             
+                             // Show first chapter by default if no restore happened yet
+                             if (!window.isRestoring) switchChapter(0, 0);
                              
                              if (allElements.length === 0) {
                                  var allNodes = textContainer.querySelectorAll('*');
@@ -278,15 +371,6 @@ object EpubParser {
                              wrapper.addEventListener('scroll', function() {
                                  if (isResizing) return;
                                  updateProgress(); 
-                                 if(saveTimeout) clearTimeout(saveTimeout);
-                                 saveTimeout = setTimeout(function() { 
-                                     findCurrentAnchor(); 
-                                     if(window.readerBridge && window.readerBridge.saveProgress) {
-                                         var w = wrapper.clientWidth; var maxS = wrapper.scrollWidth - w;
-                                         var pct = maxS > 0 ? (wrapper.scrollLeft / maxS) : 0;
-                                         window.readerBridge.saveProgress(pct.toString());
-                                     } 
-                                 }, 300);
                              });
                              
                              wrapper.addEventListener('wheel', function(e) {
@@ -328,10 +412,12 @@ object EpubParser {
                                              forceBreakBefore(el);
                                          }
                                          setTimeout(function() {
+                                             if (!el || !wrapper) return;
                                              var rect = el.getBoundingClientRect();
                                              var wRect = wrapper.getBoundingClientRect();
-                                             var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / wrapper.clientWidth) * wrapper.clientWidth;
-                                 wrapper.scrollLeft = targetL;
+                                             if (layoutCache.w <= 0) refreshLayoutCache();
+                                             var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / layoutCache.w) * layoutCache.w;
+                                             wrapper.scrollLeft = targetL;
                                          }, 10);
                                      }
 
@@ -402,10 +488,10 @@ object EpubParser {
                     };
 
                     function forceBreakBefore(el) {
-                         var prev = document.querySelectorAll('.forced-break');
-                         for(var i=0; i<prev.length; i++) {
-                             prev[i].style.breakBefore = '';
-                             prev[i].classList.remove('forced-break');
+                         // Optimization: only clear tracked elements instead of querySelectorAll
+                         while(activeForcedBreaks.length > 0) {
+                             var p = activeForcedBreaks.pop();
+                             if(p) { p.style.breakBefore = ''; p.classList.remove('forced-break'); }
                          }
                          if (el) {
                              var blockEl = el;
@@ -416,6 +502,7 @@ object EpubParser {
                              if(blockEl && blockEl !== textContainer) {
                                  blockEl.style.breakBefore = 'column';
                                  blockEl.classList.add('forced-break');
+                                 activeForcedBreaks.push(blockEl);
                              }
                          }
                     }
@@ -426,14 +513,23 @@ object EpubParser {
                              try { el = document.querySelector('[id="' + CSS.escape(id) + '"]'); } catch(e) {}
                          }
                          if(el) {
+                             var ch = el.closest('.chapter');
+                             var cIdx = chapterElements.indexOf(ch);
+                             if (cIdx !== -1 && cIdx !== currentChapterIndex) {
+                                 switchChapter(cIdx, 0);
+                             }
                              forceBreakBefore(el);
-                             setTimeout(function() {
-                                 var rect = el.getBoundingClientRect();
-                                 var wRect = wrapper.getBoundingClientRect();
-                                 var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / wrapper.clientWidth) * wrapper.clientWidth;
-                                 wrapper.scrollLeft = targetL;
-                                 setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 300);
-                             }, 10);
+                             requestAnimationFrame(function() {
+                                 requestAnimationFrame(function() {
+                                     if (!el || !wrapper) return;
+                                     var rect = el.getBoundingClientRect();
+                                     var wRect = wrapper.getBoundingClientRect();
+                                     if (layoutCache.w <= 0) refreshLayoutCache();
+                                     var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / layoutCache.w) * layoutCache.w;
+                                     wrapper.scrollLeft = targetL;
+                                     setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 150);
+                                 });
+                             });
                          }
                     };
                     
@@ -443,14 +539,23 @@ object EpubParser {
                          var el = document.getElementById(id);
                          if(el) {
                              el.classList.add('active-match');
+                             var ch = el.closest('.chapter');
+                             var cIdx = chapterElements.indexOf(ch);
+                             if (cIdx !== -1 && cIdx !== currentChapterIndex) {
+                                 switchChapter(cIdx, 0);
+                             }
                              forceBreakBefore(el);
-                             setTimeout(function() {
-                                 var rect = el.getBoundingClientRect();
-                                 var wRect = wrapper.getBoundingClientRect();
-                                 var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / wrapper.clientWidth) * wrapper.clientWidth;
-                                 wrapper.scrollLeft = targetL;
-                                 setTimeout(function() { updateProgress(); }, 300);
-                             }, 10);
+                             requestAnimationFrame(function() {
+                                 requestAnimationFrame(function() {
+                                    if (!el || !wrapper) return;
+                                    var rect = el.getBoundingClientRect();
+                                    var wRect = wrapper.getBoundingClientRect();
+                                    if (layoutCache.w <= 0) refreshLayoutCache();
+                                    var targetL = Math.round((wrapper.scrollLeft + rect.left - wRect.left) / layoutCache.w) * layoutCache.w;
+                                    wrapper.scrollLeft = targetL;
+                                    setTimeout(function() { updateProgress(); }, 150);
+                                 });
+                             });
                          }
                     };
 
