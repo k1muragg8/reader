@@ -311,25 +311,26 @@ object EpubParser {
 
                     function updateProgress() {
                         if (isResizing || !window.readerBridge || !window.readerBridge.sendProgressInfo) return;
-                        var now = Date.now();
-                        if (now - lastBridgeTime < 100) return;
-                        lastBridgeTime = now;
+                        
+                        if (progressTimeout) clearTimeout(progressTimeout);
+                        
+                        progressTimeout = setTimeout(function() {
+                            if (layoutCache.w <= 0) refreshLayoutCache();
+                            var cur = Math.ceil((wrapper.scrollLeft + 1) / layoutCache.w);
 
-                        if (layoutCache.w <= 0) refreshLayoutCache();
-                        var cur = Math.ceil((wrapper.scrollLeft + 1) / layoutCache.w);
-                        
-                        // Per-chapter percentage
-                        var scrollPct = layoutCache.maxScroll > 0 ? (wrapper.scrollLeft / layoutCache.maxScroll) : 0;
-                        
-                        // Global percentage approximation
-                        var globalPct = Math.round(((currentChapterIndex + scrollPct) / chapterElements.length) * 100);
-                        
-                        window.readerBridge.sendProgressInfo(globalPct + '%');
-                        
-                        // Save progress in new format: chapterIndex|scrollPct
-                        if (window.isReadyToSave && window.readerBridge.saveProgress) {
-                             window.readerBridge.saveProgress(currentChapterIndex + '|' + scrollPct.toFixed(4));
-                        }
+                            // Per-chapter percentage
+                            var scrollPct = layoutCache.maxScroll > 0 ? (wrapper.scrollLeft / layoutCache.maxScroll) : 0;
+
+                            // Global percentage approximation
+                            var globalPct = Math.round(((currentChapterIndex + scrollPct) / chapterElements.length) * 100);
+
+                            window.readerBridge.sendProgressInfo(globalPct + '%');
+
+                            // Save progress in new format: chapterIndex|scrollPct
+                            if (window.isReadyToSave && window.readerBridge.saveProgress) {
+                                 window.readerBridge.saveProgress(currentChapterIndex + '|' + scrollPct.toFixed(4));
+                            }
+                        }, 100);
                     }
                     
                     /* Requirement 12: Implementation of Progress Info Request */
