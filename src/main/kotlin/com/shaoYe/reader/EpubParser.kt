@@ -322,7 +322,7 @@ object EpubParser {
                         // Global percentage approximation
                         var globalPct = Math.round(((currentChapterIndex + scrollPct) / chapterElements.length) * 100);
                         
-                        window.readerBridge.sendProgressInfo((currentChapterIndex + 1) + '-' + cur + ' / ' + chapterElements.length + ' (' + globalPct + '%)');
+                        window.readerBridge.sendProgressInfo('Progress: ' + globalPct + '%');
                         
                         // Save progress in new format: chapterIndex|scrollPct
                         if (window.isReadyToSave && window.readerBridge.saveProgress) {
