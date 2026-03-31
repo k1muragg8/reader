@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.shaoYe.reader"
-version = "1.4.5"
+version = "1.4.6"
 
 repositories {
     mavenCentral()
@@ -32,6 +32,6 @@ kotlin {
 tasks {
     patchPluginXml {
         sinceBuild.set("231")
-        untilBuild.set(provider { null })
+        untilBuild.set("253.*")
     }
 }
