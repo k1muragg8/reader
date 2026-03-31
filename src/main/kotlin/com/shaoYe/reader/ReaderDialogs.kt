@@ -46,32 +46,6 @@ class TocDialog(project: Project, private val tocItems: List<EpubParser.TocItem>
     override fun createActions() = emptyArray<Action>()
 }
 
-class ProgressDialog(project: Project) : DialogWrapper(project, false, IdeModalityType.MODELESS) {
-    private val infoLabel = JLabel("Calculating progress...", SwingConstants.CENTER)
-
-    init {
-        title = "Reading Progress"
-        setResizable(false)
-        init()
-    }
-
-    fun updateInfo(info: String) {
-        SwingUtilities.invokeLater {
-            infoLabel.text = info
-        }
-    }
-
-    override fun createCenterPanel(): JComponent {
-        val panel = JPanel(BorderLayout())
-        panel.preferredSize = Dimension(200, 60)
-        infoLabel.font = infoLabel.font.deriveFont(16f)
-        panel.add(infoLabel, BorderLayout.CENTER)
-        return panel
-    }
-
-    override fun createActions() = emptyArray<Action>()
-}
-
 class SettingsDialog(project: Project, private val service: ReaderService) : DialogWrapper(project, false, IdeModalityType.MODELESS) {
     init {
         title = "Settings"

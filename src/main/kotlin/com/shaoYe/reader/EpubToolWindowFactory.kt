@@ -44,13 +44,18 @@ class EpubToolWindowFactory : ToolWindowFactory, DumbAware {
                 ToggleTocAction(),
                 OpenFileAction(),
                 ToggleSearchAction(),
-                ToggleSettingsAction(),
-                ShowProgressAction()
+                ToggleSettingsAction()
             )
         )
 
         val contentFactory = ContentFactory.getInstance()
         val content = contentFactory.createContent(panel, "", false)
         toolWindow.contentManager.addContent(content)
+
+        readerService.progressCallback = { infoStr ->
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+                content.displayName = infoStr
+            }
+        }
     }
 }

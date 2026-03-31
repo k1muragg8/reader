@@ -38,8 +38,8 @@ class ReaderService(private val project: Project) {
 
     // State
     private var currentSearchDialog: SearchDialog? = null
-    private var currentProgressInfoDialog: ProgressDialog? = null
     private var currentTocItems: List<EpubParser.TocItem> = emptyList()
+    var progressCallback: ((String) -> Unit)? = null
 
     companion object {
         private const val KEY_LAST_PATH = "READER_MASTER_LAST_PATH"
@@ -119,7 +119,7 @@ class ReaderService(private val project: Project) {
 
         progressInfoQuery = JBCefJSQuery.create(jbCefBrowser as JBCefBrowserBase)
         progressInfoQuery?.addHandler { infoStr ->
-            currentProgressInfoDialog?.updateInfo(infoStr)
+            progressCallback?.invoke(infoStr)
             JBCefJSQuery.Response("OK")
         }
 
@@ -280,15 +280,6 @@ class ReaderService(private val project: Project) {
         browser?.cefBrowser?.executeJavaScript("if(window.setDialogActive) window.setDialogActive($active);", null, 0)
     }
 
-    fun showProgressInfo() {
-        if (currentProgressInfoDialog == null || !currentProgressInfoDialog!!.isShowing) {
-            currentProgressInfoDialog = ProgressDialog(project)
-            browser?.cefBrowser?.executeJavaScript("if(window.requestProgressInfo) window.requestProgressInfo();", null, 0)
-            currentProgressInfoDialog?.show()
-        } else {
-            browser?.cefBrowser?.executeJavaScript("if(window.requestProgressInfo) window.requestProgressInfo();", null, 0)
-        }
-    }
 
     // --- Invoked from Native Dialogs ---
     fun setTheme(theme: String) {
