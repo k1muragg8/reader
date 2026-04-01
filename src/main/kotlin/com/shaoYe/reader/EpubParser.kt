@@ -334,7 +334,7 @@ object EpubParser {
                             var globalPct = totalTextLength > 0 ? Math.round((charIndex / totalTextLength) * 100) : 0;
                             if (globalPct > 100) globalPct = 100;
 
-                            window.readerBridge.sendProgressInfo(Math.round(charIndex) + ' / ' + totalTextLength + ' (' + globalPct + '%)');
+                            window.readerBridge.sendProgressInfo(globalPct + '%');
 
                             // Save progress in new format: chapterIndex|scrollPct
                             if (window.isReadyToSave && window.readerBridge.saveProgress) {
