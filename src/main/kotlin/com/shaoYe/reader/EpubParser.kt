@@ -734,24 +734,24 @@ object EpubParser {
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
                 <div style="cursor: pointer;">
-                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v1.4.5 (Stable)</div>
+                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v1.5.0 (Stable)</div>
                     
                     <div style="font-size: 14px; line-height: 1.8; margin-bottom: 20px;">
                         <div style="font-weight: bold; color: var(--text);">New in this version:</div>
+                        <div>• Optimized default font size for better readability</div>
                         <div>• Fixed jumping to chapters and search results</div>
-                        <div>• Fixed font size adjustment setting</div>
                     </div>
                     
                     <div style="font-size: 14px; line-height: 1.8; margin-bottom: 20px; opacity: 0.9;">
                         <div style="font-weight: bold; color: var(--text);">新版本特性：</div>
+                        <div>• 优化了默认字体大小，提升阅读舒适度</div>
                         <div>• 修复了点击目录章节或搜索结果时跳转位置不准确的问题</div>
-                        <div>• 修复了设置中调整字体大小失效的问题</div>
                     </div>
 
                     <div style="font-size: 14px; line-height: 1.8; opacity: 0.8;">
                         <div style="font-weight: bold; color: var(--text);">新機能：</div>
+                        <div>• 読みやすさを向上させるためにデフォルトのフォントサイズを最適化しました</div>
                         <div>• チャプターと検索結果へのジャンプを修正しました</div>
-                        <div>• フォントサイズ調整の設定を修正しました</div>
                     </div>
                     
                     <div style="font-size: 13px; margin-top: 30px; border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px;">

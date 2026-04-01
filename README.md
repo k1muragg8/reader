@@ -1,125 +1,84 @@
 # Reader Master
 
-[![Twitter Follow](https://img.shields.io/badge/follow-%40JBPlatform-1DA1F2?logo=twitter)](https://twitter.com/JBPlatform)
-[![Developers Forum](https://img.shields.io/badge/JetBrains%20Platform-Join-blue)][jb:forum]
+<p align="center">
+  <img src="src/main/resources/icons/magicBook.svg" width="100" height="100" alt="Reader Master Logo">
+</p>
 
-## 更新日志 (Changelog)
-
-### v1.4.5 (最新版本)
-* **修复**: 修复了阅读器中点击章节或搜索结果时无法正确跳转的问题（修正了页面滚动逻辑计算）。
-* **调整**: 修复了设置中调整字体大小失效的问题，并根据需求移除了调整字体格式的功能，精简了设置面板。
+<p align="center">
+  <b>A high-performance EPUB reader integrated into your IntelliJ IDE.</b><br>
+  <i>IDE 内部的高性能 EPUB 阅读器 | IntelliJ IDE 用の高性能 EPUB リーダー</i>
+</p>
 
 ---
 
-## Plugin template structure
+## 🌐 Language / 语言
+[English](#english) | [简体中文](#简体中文) | [日本語](#日本語)
 
-A generated project contains the following content structure:
+---
 
-```
-.
-├── .run/                   Predefined Run/Debug Configurations
-├── build/                  Output build directory
-├── gradle
-│   ├── wrapper/            Gradle Wrapper
-├── src                     Plugin sources
-│   ├── main
-│   │   ├── kotlin/         Kotlin production sources
-│   │   └── resources/      Resources - plugin.xml, icons, messages
-├── .gitignore              Git ignoring rules
-├── build.gradle.kts        Gradle build configuration
-├── gradle.properties       Gradle configuration properties
-├── gradlew                 *nix Gradle Wrapper script
-├── gradlew.bat             Windows Gradle Wrapper script
-├── README.md               README
-└── settings.gradle.kts     Gradle project settings
-```
+<a name="english"></a>
+## 🇬🇧 English
 
-In addition to the configuration files, the most crucial part is the `src` directory, which contains our implementation
-and the manifest for our plugin – [plugin.xml][file:plugin.xml].
+Reader Master is designed for developers who love to read technical books without leaving their IDE. It provides an immersive, distraction-free reading experience with deep integration into the IntelliJ environment.
 
-> [!NOTE]
-> To use Java in your plugin, create the `/src/main/java` directory.
+### ✨ Key Features
+- **Instant Search**: Powerful real-time search engine with context snippets and direct navigation.
+- **Immersive Layout**: Extreme edge-to-edge design with ultra-narrow margins for maximum content visibility.
+- **Precise Navigation**: Smooth pagination using mouse wheel or keyboard shortcuts (A/D, Arrows).
+- **Font Sync**: Reader font size automatically synchronizes with your IDE editor settings.
+- **Smart Memory**: Automatically remembers your last book and exact reading progress.
+- **Stealth Mode**: Content automatically hides when the window loses focus for maximum privacy.
 
-## Plugin configuration file
+---
 
-The plugin configuration file is a [plugin.xml][file:plugin.xml] file located in the `src/main/resources/META-INF`
-directory.
-It provides general information about the plugin, its dependencies, extensions, and listeners.
+<a name="简体中文"></a>
+## 🇨🇳 简体中文
 
-You can read more about this file in the [Plugin Configuration File][docs:plugin.xml] section of our documentation.
+Reader Master (阅读大师) 专为喜欢在 IDE 中阅读技术类书籍的开发者设计。它提供了一个沉浸式、无干扰的阅读环境，并与 IntelliJ 环境深度集成。
 
-If you're still not quite sure what this is all about, read our
-introduction: [What is the IntelliJ Platform?][docs:intro]
+### ✨ 核心特性
+- **实时搜索**：强劲的实时搜索引擎，支持上下文片段预览与点击直接跳转。
+- **沉浸式排版**：极致的边缘贴合设计，无多余留白，最大化阅读视野。
+- **精准翻页**：支持鼠标滚轮及键盘快捷键（A/D 键、左右方向键）精准无缝翻页。
+- **字体同步**：阅读器字体大小自动跟随 IDE 编辑器字体设置，现已完美对齐。
+- **智能记忆**：自动保存上次阅读的书籍及精确的阅读进度。
+- **隐私模式**：当窗口失去焦点时内容自动隐藏，保护您的阅读隐私。
 
-$H$H Predefined Run/Debug configurations
+---
 
-Within the default project structure, there is a `.run` directory provided containing predefined *Run/Debug
-configurations* that expose corresponding Gradle tasks:
+<a name="日本語"></a>
+## 🇯🇵 日本語
 
-| Configuration name | Description                                                                                                                                                                         |
-|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Run Plugin         | Runs [`:runIde`][gh:intellij-platform-gradle-plugin-runIde] IntelliJ Platform Gradle Plugin task. Use the *Debug* icon for plugin debugging.                                        |
-| Run Tests          | Runs [`:test`][gradle:lifecycle-tasks] Gradle task.                                                                                                                                 |
-| Run Verifications  | Runs [`:verifyPlugin`][gh:intellij-platform-gradle-plugin-verifyPlugin] IntelliJ Platform Gradle Plugin task to check the plugin compatibility against the specified IntelliJ IDEs. |
+Reader Master は、IDE を離れることなく技術書を読みた開発者のために設計されています。IntelliJ 環境と深く統合され、没入感のある、集中できる読書体験を提供します。
 
-> [!NOTE]
-> You can find the logs from the running task in the `idea.log` tab.
+### ✨ 主な機能
+- **インスタント検索**：コンテキストスニペットと直接移動を備えた強力なリアルタイム検索エンジン。
+- **没入型レイアウト**：余白を極限まで削ぎ落としたデザインで、表示空間を最大化。
+- **正確な操作**：マウスホイールやキーボードショートカット（A/D、矢印キー）による正確なページ送り。
+- **フォント同期**：リーダーのフォントサイズは IDE エディタ設定と自動的に同期します。
+- **スマートメモリー**：最後に読んだ本と正確な進捗を自動的に保存します。
+- **ステルスモード**：フォーカスが外れると内容が自動的に隠れ、プライバシーを保護します。
 
-## Publishing the plugin
+---
 
-> [!TIP]
-> Make sure to follow all guidelines listed in [Publishing a Plugin][docs:publishing] to follow all recommended and
-> required steps.
+## 📝 更新日志 (Changelog)
 
-Releasing a plugin to [JetBrains Marketplace](https://plugins.jetbrains.com) is a straightforward operation that uses
-the `publishPlugin` Gradle task provided by
-the [intellij-platform-gradle-plugin][gh:intellij-platform-gradle-plugin-docs].
+### v1.5.0 (Current)
+- **[EN]** Optimized default font size to perfectly align with IDE editor font size.
+- **[CN]** 优化了默认字体大小设置，使其默认与 IDE 编辑器字体大小对齐。
+- **[JP]** デフォルトのフォントサイズを最適化し、IDE エディタのサイズと完全に一致させました。
 
-You can also upload the plugin to the [JetBrains Plugin Repository](https://plugins.jetbrains.com/plugin/upload)
-manually via UI.
+### v1.4.5
+- Fixed chapter jumping and search result navigation logic.
+- 精简了设置面板，移除了冗余的字体格式调整。
 
-## Useful links
+---
 
-- [IntelliJ Platform SDK Plugin SDK][docs]
-- [IntelliJ Platform Gradle Plugin Documentation][gh:intellij-platform-gradle-plugin-docs]
-- [IntelliJ Platform Explorer][jb:ipe]
-- [JetBrains Marketplace Quality Guidelines][jb:quality-guidelines]
-- [IntelliJ Platform UI Guidelines][jb:ui-guidelines]
-- [JetBrains Marketplace Paid Plugins][jb:paid-plugins]
-- [IntelliJ SDK Code Samples][gh:code-samples]
+## 🚀 Installation & Usage
+1. Open the **Reader Master** tool window (icon with a magic book).
+2. Click anywhere on the welcome screen to open an `.epub` file.
+3. Use **A / D** or **Arrow Keys** to turn pages.
+4. Enjoy your reading!
 
-[docs]: https://plugins.jetbrains.com/docs/intellij
-
-[docs:intro]: https://plugins.jetbrains.com/docs/intellij/intellij-platform.html?from=IJPluginTemplate
-
-[docs:plugin.xml]: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html?from=IJPluginTemplate
-
-[docs:publishing]: https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html?from=IJPluginTemplate
-
-[file:plugin.xml]: ./src/main/resources/META-INF/plugin.xml
-
-[gh:code-samples]: https://github.com/JetBrains/intellij-sdk-code-samples
-
-[gh:intellij-platform-gradle-plugin]: https://github.com/JetBrains/intellij-platform-gradle-plugin
-
-[gh:intellij-platform-gradle-plugin-docs]: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html
-
-[gh:intellij-platform-gradle-plugin-runIde]: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html#runIde
-
-[gh:intellij-platform-gradle-plugin-verifyPlugin]: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html#verifyPlugin
-
-[gradle:lifecycle-tasks]: https://docs.gradle.org/current/userguide/java_plugin.html#lifecycle_tasks
-
-[jb:github]: https://github.com/JetBrains/.github/blob/main/profile/README.md
-
-[jb:forum]: https://platform.jetbrains.com/
-
-[jb:quality-guidelines]: https://plugins.jetbrains.com/docs/marketplace/quality-guidelines.html
-
-[jb:paid-plugins]: https://plugins.jetbrains.com/docs/marketplace/paid-plugins-marketplace.html
-
-[jb:quality-guidelines]: https://plugins.jetbrains.com/docs/marketplace/quality-guidelines.html
-
-[jb:ipe]: https://jb.gg/ipe
-
-[jb:ui-guidelines]: https://jetbrains.github.io/ui
+---
+**Contact**: k1muragg8@gmail.com
