@@ -88,10 +88,10 @@ object EpubParser {
                     body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-family); font-size: var(--font-size) !important; }
                     
                     #content { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--bg); }
-                    #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; outline: none; transition: opacity 0.2s; will-change: transform; scroll-snap-type: x mandatory; }
+                    #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; outline: none; transition: opacity 0.2s; will-change: transform; }
                     #reader-wrapper.resizing { cursor: col-resize; opacity: 0.8; }
                     #reader-wrapper.resizing * { transition: none !important; animation: none !important; }
-                    #reader-text { height: 100%; padding: 0 60px; column-fill: auto; position: relative; }
+                    #reader-text { height: 100%; box-sizing: border-box; column-fill: auto; position: relative; column-gap: 0; }
                     
                     .chapter { break-before: column; }
                     .page-content { padding: 0; margin: 0; width: 100%; box-sizing: border-box; }
@@ -269,18 +269,23 @@ object EpubParser {
                     function updateLayout(forcedWidth) {
                         try {
                              if (!wrapper || !textContainer) return;
-                             var containerW = wrapper.clientWidth;
-                             var maxReadingW = 960;
-                             var textW = Math.min(containerW, maxReadingW);
+                             var w = forcedWidth || wrapper.clientWidth;
+                             var h = wrapper.clientHeight;
                              
-                             if(containerW > 20) {
-                                  textContainer.style.width = textW + 'px';
-                                  textContainer.style.minWidth = textW + 'px';
-                                  textContainer.style.columnWidth = textW + 'px';
+                             if(w > 20) {
+                                  // Scientific Optimization: Use viewport-relative widths to prevent "three-page-overlap"
+                                  var maxReadingW = 960;
+                                  var lateralPadding = (w > maxReadingW) ? (w - maxReadingW) / 2 : 60;
+                                  
+                                  // Ensure we only have ONE column per page by forcing column-width to be exactly 100%
+                                  textContainer.style.width = '100%';
+                                  textContainer.style.minWidth = '100%';
+                                  textContainer.style.columnWidth = '100%'; 
                                   textContainer.style.columnGap = '0px';
                                   textContainer.style.height = h + 'px';
-                                  textContainer.style.setProperty('padding', '0px', 'important');
-                                  textContainer.style.setProperty('margin', '0 auto', 'important');
+                                  textContainer.style.setProperty('padding-left', lateralPadding + 'px', 'important');
+                                  textContainer.style.setProperty('padding-right', lateralPadding + 'px', 'important');
+                                  textContainer.style.setProperty('margin', '0', 'important');
                                   // Update cache after layout changes
                                   setTimeout(refreshLayoutCache, 50);
                              }
