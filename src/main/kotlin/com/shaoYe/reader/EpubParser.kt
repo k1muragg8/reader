@@ -171,6 +171,8 @@ object EpubParser {
                     
                     var currentChapterIndex = 0;
                     var chapterElements = [];
+                    var chapterLengths = [];
+                    var totalTextLength = 0;
 
                     // --- Global Functions (Defined early for reliability) ---
                     window.readerNext = function() { 
@@ -322,9 +324,17 @@ object EpubParser {
                             var scrollPct = layoutCache.maxScroll > 0 ? (wrapper.scrollLeft / layoutCache.maxScroll) : 0;
 
                             // Global percentage approximation
-                            var globalPct = Math.round(((currentChapterIndex + scrollPct) / chapterElements.length) * 100);
+                            var charIndex = 0;
+                            for (var c = 0; c < currentChapterIndex; c++) {
+                                charIndex += chapterLengths[c];
+                            }
+                            var currentChapterLen = chapterLengths[currentChapterIndex] || 0;
+                            charIndex += scrollPct * currentChapterLen;
 
-                            window.readerBridge.sendProgressInfo(globalPct + '%');
+                            var globalPct = totalTextLength > 0 ? Math.round((charIndex / totalTextLength) * 100) : 0;
+                            if (globalPct > 100) globalPct = 100;
+
+                            window.readerBridge.sendProgressInfo(Math.round(charIndex) + ' / ' + totalTextLength + ' (' + globalPct + '%)');
 
                             // Save progress in new format: chapterIndex|scrollPct
                             if (window.isReadyToSave && window.readerBridge.saveProgress) {
@@ -349,7 +359,14 @@ object EpubParser {
                              // 1. Populate Chapters & Elements
                              var rawChapters = textContainer.querySelectorAll('.chapter');
                              chapterElements = [];
-                             for(var k=0; k<rawChapters.length; k++) { chapterElements.push(rawChapters[k]); }
+                             chapterLengths = [];
+                             totalTextLength = 0;
+                             for(var k=0; k<rawChapters.length; k++) {
+                                 chapterElements.push(rawChapters[k]);
+                                 var len = rawChapters[k].textContent.length || 0;
+                                 chapterLengths.push(len);
+                                 totalTextLength += len;
+                             }
                              
                              var rawNodes = textContainer.querySelectorAll('p, h1, h2, h3, h4, h5, h6, img, li, blockquote, .page-content div, .chapter div');
                              allElements = [];
