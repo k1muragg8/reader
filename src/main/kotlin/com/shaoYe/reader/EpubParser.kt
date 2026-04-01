@@ -34,8 +34,8 @@ object EpubParser {
                         --hover-bg: ${if (colors.bg.startsWith("#2")) "rgba(255,255,255,0.08)" else "rgba(0,0,0,0.04)"};
                         --font-size: ${fontSize}px;
                         --font-family: $cssFontFamily;
-                        --line-height: 1.8;
-                        --letter-spacing: 0.03em;
+                        --line-height: 2.0;
+                        --letter-spacing: 0.05em;
                     }
 
                     /* Theme: White (Soft) */
@@ -110,7 +110,7 @@ object EpubParser {
                     /* Calibration for perfect column alignment & Anti-Tearing (Requirement 13) */
                     #reader-text { 
                         padding: 0 !important; margin: 0 !important; box-sizing: border-box; 
-                        column-fill: auto;
+                        column-fill: auto; column-gap: 0px !important; column-width: 100vw !important;
                     }
                     .chapter { break-before: column; }
                     .chapter:not(.active-chapter) { display: none !important; }
@@ -187,13 +187,13 @@ object EpubParser {
                         if (layoutCache.w <= 0) refreshLayoutCache();
                         var w = layoutCache.w;
                         if (w <= 0) return;
-                        var target = (Math.floor((wrapper.scrollLeft + 10) / w) + 1) * w;
+                        var target = Math.round((wrapper.scrollLeft + w) / w) * w;
                         if (target > layoutCache.maxScroll + 10) {
                             if (currentChapterIndex < chapterElements.length - 1) {
                                 switchChapter(currentChapterIndex + 1, 0);
                             }
                         } else {
-                            wrapper.scrollTo({ left: target, behavior: 'instant' });
+                            wrapper.scrollLeft = target;
                         }
                     };
                     window.readerPrev = function() { 
@@ -201,13 +201,13 @@ object EpubParser {
                         if (layoutCache.w <= 0) refreshLayoutCache();
                         var w = layoutCache.w;
                         if (w <= 0) return;
-                        var target = Math.max(0, (Math.ceil((wrapper.scrollLeft - 10) / w) - 1) * w);
+                        var target = Math.max(0, Math.round((wrapper.scrollLeft - w) / w) * w);
                         if (wrapper.scrollLeft <= 5) {
                             if (currentChapterIndex > 0) {
                                 switchChapter(currentChapterIndex - 1, 'end');
                             }
                         } else {
-                            wrapper.scrollTo({ left: target, behavior: 'instant' });
+                            wrapper.scrollLeft = target;
                         }
                     };
 
@@ -278,14 +278,21 @@ object EpubParser {
                                   var lateralPadding = (w > maxReadingW) ? (w - maxReadingW) / 2 : 60;
                                   
                                   // Ensure we only have ONE column per page by forcing column-width to be exactly 100%
-                                  textContainer.style.width = '100%';
-                                  textContainer.style.minWidth = '100%';
-                                  textContainer.style.columnWidth = '100%'; 
+                                  textContainer.style.width = '100vw';
+                                  textContainer.style.minWidth = '100vw';
+                                  textContainer.style.columnWidth = '100vw';
                                   textContainer.style.columnGap = '0px';
                                   textContainer.style.height = h + 'px';
-                                  textContainer.style.setProperty('padding-left', lateralPadding + 'px', 'important');
-                                  textContainer.style.setProperty('padding-right', lateralPadding + 'px', 'important');
+                                  textContainer.style.setProperty('padding', '0', 'important');
                                   textContainer.style.setProperty('margin', '0', 'important');
+
+                                  // Apply lateral padding to .page-content to prevent bleeding, instead of to textContainer directly
+                                  var pageContents = document.querySelectorAll('.page-content');
+                                  for (var i = 0; i < pageContents.length; i++) {
+                                      pageContents[i].style.setProperty('padding-left', lateralPadding + 'px', 'important');
+                                      pageContents[i].style.setProperty('padding-right', lateralPadding + 'px', 'important');
+                                  }
+
                                   // Update cache after layout changes
                                   setTimeout(refreshLayoutCache, 50);
                              }
@@ -347,6 +354,10 @@ object EpubParser {
 
                             var globalPct = totalTextLength > 0 ? Math.round((charIndex / totalTextLength) * 100) : 0;
                             if (globalPct > 100) globalPct = 100;
+                            // Ensure 0% at the very beginning
+                            if (currentChapterIndex === 0 && wrapper.scrollLeft <= 5) globalPct = 0;
+                            // Ensure 100% at the very end
+                            if (currentChapterIndex === chapterElements.length - 1 && wrapper.scrollLeft >= layoutCache.maxScroll - 5) globalPct = 100;
 
                             window.readerBridge.sendProgressInfo(globalPct + '%');
 
@@ -560,21 +571,17 @@ object EpubParser {
                              }
                              var jumpFn = function() {
                                  forceBreakBefore(el);
-                                 requestAnimationFrame(function() {
-                                     requestAnimationFrame(function() {
-                                         if (!el || !wrapper) return;
-                                         if (layoutCache.w <= 0) refreshLayoutCache();
-                                         var targetL = 0;
-                                         if (!el.classList.contains('chapter')) {
-                                             var rect = el.getBoundingClientRect();
-                                             var wRect = wrapper.getBoundingClientRect();
-                                             var relLeft = rect.left - wRect.left;
-                                             targetL = Math.round((wrapper.scrollLeft + relLeft) / layoutCache.w) * layoutCache.w;
-                                         }
-                                         wrapper.scrollLeft = targetL;
-                                         setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 150);
-                                     });
-                                 });
+                                 if (!el || !wrapper) return;
+                                 if (layoutCache.w <= 0) refreshLayoutCache();
+                                 var targetL = 0;
+                                 if (!el.classList.contains('chapter')) {
+                                     var rect = el.getBoundingClientRect();
+                                     var wRect = wrapper.getBoundingClientRect();
+                                     var relLeft = rect.left - wRect.left;
+                                     targetL = Math.round((wrapper.scrollLeft + relLeft) / layoutCache.w) * layoutCache.w;
+                                 }
+                                 wrapper.scrollLeft = targetL;
+                                 setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 150);
                              };
                              if (delay > 0) setTimeout(jumpFn, delay);
                              else jumpFn();
@@ -596,21 +603,17 @@ object EpubParser {
                              }
                              var jumpFn = function() {
                                  forceBreakBefore(el);
-                                 requestAnimationFrame(function() {
-                                     requestAnimationFrame(function() {
-                                        if (!el || !wrapper) return;
-                                        if (layoutCache.w <= 0) refreshLayoutCache();
-                                        var targetL = 0;
-                                        if (!el.classList.contains('chapter')) {
-                                            var rect = el.getBoundingClientRect();
-                                            var wRect = wrapper.getBoundingClientRect();
-                                            var relLeft = rect.left - wRect.left;
-                                            targetL = Math.round((wrapper.scrollLeft + relLeft) / layoutCache.w) * layoutCache.w;
-                                        }
-                                        wrapper.scrollLeft = targetL;
-                                        setTimeout(function() { updateProgress(); }, 150);
-                                     });
-                                 });
+                                 if (!el || !wrapper) return;
+                                 if (layoutCache.w <= 0) refreshLayoutCache();
+                                 var targetL = 0;
+                                 if (!el.classList.contains('chapter')) {
+                                     var rect = el.getBoundingClientRect();
+                                     var wRect = wrapper.getBoundingClientRect();
+                                     var relLeft = rect.left - wRect.left;
+                                     targetL = Math.round((wrapper.scrollLeft + relLeft) / layoutCache.w) * layoutCache.w;
+                                 }
+                                 wrapper.scrollLeft = targetL;
+                                 setTimeout(function() { updateProgress(); }, 150);
                              };
                              if (delay > 0) setTimeout(jumpFn, delay);
                              else jumpFn();
