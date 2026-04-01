@@ -131,7 +131,7 @@ class ReaderService(private val project: Project) {
                     val props = PropertiesComponent.getInstance(project)
                     val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
                     val scheme = EditorColorsManager.getInstance().globalScheme
-                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: scheme.editorFontSize
+                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 1)
                     updateFontSize(fontSize)
 
                     // Mark as ready to save progress after a short delay to ensure DOM is fully laid out
@@ -146,7 +146,7 @@ class ReaderService(private val project: Project) {
              val props = PropertiesComponent.getInstance(project)
              val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
              val scheme = EditorColorsManager.getInstance().globalScheme
-             val fontSize = savedFontSizeStr?.toIntOrNull() ?: scheme.editorFontSize
+             val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 1)
              updateFontSize(fontSize)
         })
 
@@ -224,7 +224,7 @@ class ReaderService(private val project: Project) {
                     val savedFontFamily = props.getValue(KEY_LAST_FONT_FAMILY)
                     val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
                     // The default font size should be the same as the IDE editor default.
-                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: scheme.editorFontSize
+                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 1)
 
                     val loadResult = EpubParser.loadEpub(file, isDarcula, fontSize, savedTheme, savedFontFamily, getBridgeJs())
                     currentTocItems = loadResult.toc
@@ -288,7 +288,8 @@ class ReaderService(private val project: Project) {
 
     fun setFontFamily(family: String) {
         PropertiesComponent.getInstance(project).setValue(KEY_LAST_FONT_FAMILY, family)
-        val cssVal = if (family == "serif") "Palatino, 'Palatino Linotype', 'Book Antiqua', Georgia, serif" else "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        val appleFontStack = "'PingFang SC', 'Hiragino Sans GB', 'Heiti SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif"
+        val cssVal = if (family == "serif") "Palatino, 'Palatino Linotype', 'Book Antiqua', Georgia, serif" else "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, $appleFontStack"
         browser?.cefBrowser?.executeJavaScript("document.documentElement.style.setProperty('--font-family', \"$cssVal\");", null, 0)
     }
 

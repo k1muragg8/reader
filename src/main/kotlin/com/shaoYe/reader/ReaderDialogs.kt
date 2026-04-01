@@ -64,9 +64,9 @@ class SettingsDialog(project: Project, private val service: ReaderService) : Dia
         // Theme
         val themePanel = JPanel(FlowLayout(FlowLayout.LEFT))
         themePanel.add(JLabel("Theme:"))
-        val btnWhite = JButton("White").apply { addActionListener { service.setTheme("white") } }
-        val btnSepia = JButton("Sepia").apply { addActionListener { service.setTheme("sepia") } }
-        val btnDark = JButton("Dark").apply { addActionListener { service.setTheme("dark") } }
+        val btnWhite = JButton("Soft White (护眼白)").apply { addActionListener { service.setTheme("white") } }
+        val btnSepia = JButton("Eye Care (羊皮纸)").apply { addActionListener { service.setTheme("sepia") } }
+        val btnDark = JButton("Night Mode (夜间)").apply { addActionListener { service.setTheme("dark") } }
         themePanel.add(btnWhite)
         themePanel.add(btnSepia)
         themePanel.add(btnDark)

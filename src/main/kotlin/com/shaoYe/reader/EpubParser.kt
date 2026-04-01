@@ -14,7 +14,8 @@ object EpubParser {
     private fun getAppHtml(contentHtml: String, colors: ThemeColors, fontSize: Int, theme: String?, fontFamily: String?, bridgeJs: String? = null): String {
         val actualTheme = theme ?: "white"
         val actualFontFamily = fontFamily ?: "sans"
-        val cssFontFamily = if (actualFontFamily == "serif") "Palatino, \"Palatino Linotype\", \"Book Antiqua\", Georgia, serif" else "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
+        val appleFontStack = "'PingFang SC', 'Hiragino Sans GB', 'Heiti SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif"
+        val cssFontFamily = if (actualFontFamily == "serif") "Palatino, \"Palatino Linotype\", \"Book Antiqua\", Georgia, serif" else "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, $appleFontStack"
 
         val bridgeScript = bridgeJs ?: ""
 
@@ -33,35 +34,41 @@ object EpubParser {
                         --hover-bg: ${if (colors.bg.startsWith("#2")) "rgba(255,255,255,0.08)" else "rgba(0,0,0,0.04)"};
                         --font-size: ${fontSize}px;
                         --font-family: $cssFontFamily;
+                        --line-height: 1.8;
+                        --letter-spacing: 0.03em;
                     }
 
-                    /* Theme: White */
+                    /* Theme: White (Soft) */
                     :root[data-theme="white"] {
-                        --bg: #ffffff; --text: #000000;
-                        --sidebar-bg: rgba(255, 255, 255, 0.9);
-                        --border: #e0e0e0; --icon-stroke: #000000;
+                        --bg: #f9f9f9; --text: #2c2c2c;
+                        --sidebar-bg: rgba(249, 249, 249, 0.9);
+                        --border: #e0e0e0; --icon-stroke: #2c2c2c;
                         --hover-bg: rgba(0,0,0,0.05);
                     }
 
-                    /* Theme: Sepia */
+                    /* Theme: Sepia (Eye Care) */
                     :root[data-theme="sepia"] {
-                        --bg: #fbf0d9; --text: #5f4b32;
-                        --sidebar-bg: rgba(251, 240, 217, 0.95);
-                        --border: #e8dcc4; --icon-stroke: #5f4b32;
-                        --hover-bg: rgba(95, 75, 50, 0.08);
+                        --bg: #f4ecd8; --text: #5b4636;
+                        --sidebar-bg: rgba(244, 236, 216, 0.95);
+                        --border: #e2d7bd; --icon-stroke: #5b4636;
+                        --hover-bg: rgba(91, 70, 54, 0.08);
                     }
 
-                    /* Theme: Dark */
+                    /* Theme: Dark (Night) */
                     :root[data-theme="dark"] {
-                        --bg: #1e1e1e; --text: #d4d4d4;
-                        --sidebar-bg: rgba(30, 30, 30, 0.9);
-                        --border: #333333; --icon-stroke: #d4d4d4;
-                        --hover-bg: rgba(255,255,255,0.1);
+                        --bg: #1a1a1a; --text: #b0b0b0;
+                        --sidebar-bg: rgba(26, 26, 26, 0.9);
+                        --border: #333333; --icon-stroke: #b0b0b0;
+                        --hover-bg: rgba(255,255,255,0.08);
                     }
                     
                     body { 
                         font-family: var(--font-family);
                         font-size: var(--font-size) !important;
+                        line-height: var(--line-height);
+                        letter-spacing: var(--letter-spacing);
+                        -webkit-font-smoothing: antialiased;
+                        -moz-osx-font-smoothing: grayscale;
                         margin: 0 !important; padding: 0 !important; width: 100% !important; 
                         max-width: none !important; box-sizing: border-box !important;
                         background-color: var(--bg); color: var(--text); overflow: hidden; 
@@ -80,11 +87,11 @@ object EpubParser {
 
                     body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-family); font-size: var(--font-size) !important; }
                     
-                    #content { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-                    #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; outline: none; transition: opacity 0.2s; will-change: transform; }
+                    #content { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--bg); }
+                    #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; outline: none; transition: opacity 0.2s; will-change: transform; scroll-snap-type: x mandatory; }
                     #reader-wrapper.resizing { cursor: col-resize; opacity: 0.8; }
                     #reader-wrapper.resizing * { transition: none !important; animation: none !important; }
-                    #reader-text { height: 100%; padding: 5px 60px; column-fill: auto; position: relative; }
+                    #reader-text { height: 100%; padding: 0 60px; column-fill: auto; position: relative; }
                     
                     .chapter { break-before: column; }
                     .page-content { padding: 0; margin: 0; width: 100%; box-sizing: border-box; }
@@ -94,7 +101,7 @@ object EpubParser {
                     h2 { font-size: 1.05em !important; }
                     h3, h4, h5, h6 { font-size: 1.0em !important; }
                     
-                    p { margin: 0 !important; padding: 5px 0 !important; line-height: 1.6; text-align: justify; }
+                    p { margin: 0 !important; padding: 8px 0 !important; line-height: var(--line-height); text-align: justify; letter-spacing: var(--letter-spacing); }
                     img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 10px auto; border-radius: 8px; break-inside: avoid; }
                     
                     /* Disable all book links */
@@ -262,18 +269,20 @@ object EpubParser {
                     function updateLayout(forcedWidth) {
                         try {
                              if (!wrapper || !textContainer) return;
-                             var w = forcedWidth || wrapper.clientWidth;
-                             var h = wrapper.clientHeight;
-                             if(w > 20) {
-                                 textContainer.style.width = 'auto';
-                                 textContainer.style.minWidth = '100vw'; 
-                                 textContainer.style.columnWidth = w + 'px';
-                                 textContainer.style.columnGap = '0px';
-                                 textContainer.style.height = h + 'px';
-                                 textContainer.style.setProperty('padding', '0px', 'important');
-                                 textContainer.style.setProperty('margin', '0px', 'important');
-                                 // Update cache after layout changes
-                                 setTimeout(refreshLayoutCache, 50);
+                             var containerW = wrapper.clientWidth;
+                             var maxReadingW = 960;
+                             var textW = Math.min(containerW, maxReadingW);
+                             
+                             if(containerW > 20) {
+                                  textContainer.style.width = textW + 'px';
+                                  textContainer.style.minWidth = textW + 'px';
+                                  textContainer.style.columnWidth = textW + 'px';
+                                  textContainer.style.columnGap = '0px';
+                                  textContainer.style.height = h + 'px';
+                                  textContainer.style.setProperty('padding', '0px', 'important');
+                                  textContainer.style.setProperty('margin', '0 auto', 'important');
+                                  // Update cache after layout changes
+                                  setTimeout(refreshLayoutCache, 50);
                              }
                         } catch(e) {}
                     }
