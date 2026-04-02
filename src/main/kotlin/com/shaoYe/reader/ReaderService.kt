@@ -131,7 +131,7 @@ class ReaderService(private val project: Project) {
                     val props = PropertiesComponent.getInstance(project)
                     val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
                     val scheme = EditorColorsManager.getInstance().globalScheme
-                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 1)
+                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 2)
                     updateFontSize(fontSize)
 
                     // Mark as ready to save progress after a short delay to ensure DOM is fully laid out
@@ -146,7 +146,7 @@ class ReaderService(private val project: Project) {
              val props = PropertiesComponent.getInstance(project)
              val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
              val scheme = EditorColorsManager.getInstance().globalScheme
-             val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 1)
+             val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 2)
              updateFontSize(fontSize)
         })
 
@@ -223,8 +223,8 @@ class ReaderService(private val project: Project) {
                     val savedTheme = props.getValue(KEY_LAST_THEME)
                     val savedFontFamily = props.getValue(KEY_LAST_FONT_FAMILY)
                     val savedFontSizeStr = props.getValue(KEY_LAST_FONT_SIZE)
-                    // The default font size should be the same as the IDE editor default.
-                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 1)
+                    // The default font size should be slightly larger than the IDE editor default for readability.
+                    val fontSize = savedFontSizeStr?.toIntOrNull() ?: (scheme.editorFontSize + 2)
 
                     val loadResult = EpubParser.loadEpub(file, isDarcula, fontSize, savedTheme, savedFontFamily, getBridgeJs())
                     currentTocItems = loadResult.toc
