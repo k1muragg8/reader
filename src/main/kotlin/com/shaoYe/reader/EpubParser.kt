@@ -312,7 +312,11 @@ object EpubParser {
                         
                         var wRect = wrapper.getBoundingClientRect();
                         var low = 0, high = allElements.length - 1;
-                        var bestIndex = currentAnchorIndex;
+                        if (window.chapterBounds && window.chapterBounds[currentChapterIndex]) {
+                            low = window.chapterBounds[currentChapterIndex].start;
+                            high = window.chapterBounds[currentChapterIndex].end;
+                        }
+                        var bestIndex = Math.max(low, Math.min(currentAnchorIndex, high));
 
                         // Binary Search for O(log N) instead of O(N)
                         while (low <= high) {
