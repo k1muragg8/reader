@@ -278,15 +278,31 @@ object EpubParser {
                                   var maxReadingW = 960;
                                   var lateralPadding = (w > maxReadingW) ? (w - maxReadingW) / 2 : 60;
                                   
-                                  // Ensure we only have ONE column per page by forcing column-width to be exactly 100%
-                                  textContainer.style.width = '100%';
-                                  textContainer.style.minWidth = '100%';
-                                  textContainer.style.columnWidth = '100%'; 
-                                  textContainer.style.columnGap = '0px';
-                                  textContainer.style.height = h + 'px';
-                                  textContainer.style.setProperty('padding-left', lateralPadding + 'px', 'important');
-                                  textContainer.style.setProperty('padding-right', lateralPadding + 'px', 'important');
-                                  textContainer.style.setProperty('margin', '0', 'important');
+                                  var styleTag = document.getElementById('dynamic-layout-style');
+                                  if (!styleTag) {
+                                      styleTag = document.createElement('style');
+                                      styleTag.id = 'dynamic-layout-style';
+                                      document.head.appendChild(styleTag);
+                                  }
+
+                                  styleTag.textContent =
+                                      '#reader-text { ' +
+                                      '    box-sizing: border-box !important; ' +
+                                      '    width: 100vw !important; ' +
+                                      '    min-width: 100vw !important; ' +
+                                      '    column-width: 100vw !important; ' +
+                                      '    column-gap: 0px !important; ' +
+                                      '    height: ' + h + 'px !important; ' +
+                                      '    padding: 0 !important; ' +
+                                      '    margin: 0 !important; ' +
+                                      '} ' +
+                                      '.page-content { ' +
+                                      '    padding-left: ' + lateralPadding + 'px !important; ' +
+                                      '    padding-right: ' + lateralPadding + 'px !important; ' +
+                                      '    box-sizing: border-box !important; ' +
+                                      '    min-height: 100%; ' +
+                                      '}';
+
                                   // Update cache after layout changes
                                   setTimeout(refreshLayoutCache, 50);
                              }
