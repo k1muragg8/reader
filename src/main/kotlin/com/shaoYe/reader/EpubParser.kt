@@ -14,7 +14,7 @@ object EpubParser {
     private fun getAppHtml(contentHtml: String, colors: ThemeColors, fontSize: Int, theme: String?, fontFamily: String?, bridgeJs: String? = null): String {
         val actualTheme = theme ?: "white"
         val actualFontFamily = fontFamily ?: "sans"
-        val appleFontStack = "'-apple-system', 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Heiti SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif"
+        val appleFontStack = "'PingFang SC', 'Hiragino Sans GB', 'Heiti SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif"
         val cssFontFamily = if (actualFontFamily == "serif") "Palatino, \"Palatino Linotype\", \"Book Antiqua\", Georgia, serif" else "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, $appleFontStack"
 
         val bridgeScript = bridgeJs ?: ""
@@ -34,8 +34,8 @@ object EpubParser {
                         --hover-bg: ${if (colors.bg.startsWith("#2")) "rgba(255,255,255,0.08)" else "rgba(0,0,0,0.04)"};
                         --font-size: ${fontSize}px;
                         --font-family: $cssFontFamily;
-                        --line-height: 2.0;
-                        --letter-spacing: 0.06em;
+                        --line-height: 1.8;
+                        --letter-spacing: 0.03em;
                     }
 
                     /* Theme: White (Soft) */
@@ -67,8 +67,6 @@ object EpubParser {
                         font-size: var(--font-size) !important;
                         line-height: var(--line-height);
                         letter-spacing: var(--letter-spacing);
-                        font-weight: 400;
-                        text-rendering: optimizeLegibility;
                         -webkit-font-smoothing: antialiased;
                         -moz-osx-font-smoothing: grayscale;
                         margin: 0 !important; padding: 0 !important; width: 100% !important; 
@@ -81,7 +79,7 @@ object EpubParser {
                     
                     /* --- 核心优化：抗闪烁 CSS --- */
                     /* 当处于 resizing 状态时，强制关闭所有动画和吸附，像石头一样稳 */
-                    .resizing, #reader-wrapper.resizing {
+                    .resizing, .resizing * {
                         transition: none !important;
                         scroll-behavior: auto !important;
                     }
@@ -92,6 +90,7 @@ object EpubParser {
                     #content { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--bg); }
                     #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; outline: none; transition: opacity 0.2s; will-change: transform; }
                     #reader-wrapper.resizing { cursor: col-resize; opacity: 0.8; }
+                    #reader-wrapper.resizing * { transition: none !important; animation: none !important; }
                     #reader-text { height: 100%; box-sizing: border-box; column-fill: auto; position: relative; column-gap: 0; }
                     
                     .chapter { break-before: column; }
@@ -102,7 +101,7 @@ object EpubParser {
                     h2 { font-size: 1.05em !important; }
                     h3, h4, h5, h6 { font-size: 1.0em !important; }
                     
-                    p { margin: 0 !important; padding: 12px 0 !important; line-height: var(--line-height); text-align: left; letter-spacing: var(--letter-spacing); }
+                    p { margin: 0 !important; padding: 8px 0 !important; line-height: var(--line-height); text-align: justify; letter-spacing: var(--letter-spacing); }
                     img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 10px auto; border-radius: 8px; break-inside: avoid; }
                     
                     /* Disable all book links */
@@ -111,7 +110,7 @@ object EpubParser {
                     /* Calibration for perfect column alignment & Anti-Tearing (Requirement 13) */
                     #reader-text { 
                         padding: 0 !important; margin: 0 !important; box-sizing: border-box; 
-                        column-fill: auto; column-gap: 0px !important; column-width: 100vw !important;
+                        column-fill: auto;
                     }
                     .chapter { break-before: column; }
                     .chapter:not(.active-chapter) { display: none !important; }
@@ -188,13 +187,13 @@ object EpubParser {
                         if (layoutCache.w <= 0) refreshLayoutCache();
                         var w = layoutCache.w;
                         if (w <= 0) return;
-                        var target = Math.round((wrapper.scrollLeft + w) / w) * w;
+                        var target = (Math.floor((wrapper.scrollLeft + 10) / w) + 1) * w;
                         if (target > layoutCache.maxScroll + 10) {
                             if (currentChapterIndex < chapterElements.length - 1) {
                                 switchChapter(currentChapterIndex + 1, 0);
                             }
                         } else {
-                            wrapper.scrollLeft = target;
+                            wrapper.scrollTo({ left: target, behavior: 'instant' });
                         }
                     };
                     window.readerPrev = function() { 
@@ -202,17 +201,17 @@ object EpubParser {
                         if (layoutCache.w <= 0) refreshLayoutCache();
                         var w = layoutCache.w;
                         if (w <= 0) return;
-                        var target = Math.max(0, Math.round((wrapper.scrollLeft - w) / w) * w);
+                        var target = Math.max(0, (Math.ceil((wrapper.scrollLeft - 10) / w) - 1) * w);
                         if (wrapper.scrollLeft <= 5) {
                             if (currentChapterIndex > 0) {
                                 switchChapter(currentChapterIndex - 1, 'end');
                             }
                         } else {
-                            wrapper.scrollLeft = target;
+                            wrapper.scrollTo({ left: target, behavior: 'instant' });
                         }
                     };
 
-                    function switchChapter(idx, snapTo, callback) {
+                    function switchChapter(idx, snapTo) {
                         if (idx < 0 || idx >= chapterElements.length) return;
                         currentChapterIndex = idx;
                         for (var i = 0; i < chapterElements.length; i++) {
@@ -221,19 +220,21 @@ object EpubParser {
                             chapterElements[i].classList.toggle('active-chapter', isCurrent);
                         }
                         
-                        refreshLayoutCache();
-                        if (snapTo === 'skip') {
-                            // Skip snapping scroll position to avoid overriding external jumps
-                        } else if (snapTo === 'end') {
-                            wrapper.scrollLeft = layoutCache.maxScroll;
-                        } else if (typeof snapTo === 'number') {
-                            wrapper.scrollLeft = snapTo;
-                        } else {
-                            wrapper.scrollLeft = 0;
-                        }
-                        findCurrentAnchor();
-                        updateProgress();
-                        if (typeof callback === 'function') callback();
+                        // Force layout refresh and snap
+                        setTimeout(function() {
+                            refreshLayoutCache();
+                            if (snapTo === 'skip') {
+                                // Skip snapping scroll position to avoid overriding external jumps
+                            } else if (snapTo === 'end') {
+                                wrapper.scrollLeft = layoutCache.maxScroll;
+                            } else if (typeof snapTo === 'number') {
+                                wrapper.scrollLeft = snapTo;
+                            } else {
+                                wrapper.scrollLeft = 0;
+                            }
+                            findCurrentAnchor();
+                            updateProgress();
+                        }, 50);
                     }
 
                     window.readerRestore = function(s) {
@@ -273,27 +274,18 @@ object EpubParser {
                              
                              if(w > 20) {
                                   // Scientific Optimization: Use viewport-relative widths to prevent "three-page-overlap"
-                                  var maxReadingW = 860;
-                                  var lateralPadding = (w > maxReadingW) ? (w - maxReadingW) / 2 : 24;
+                                  var maxReadingW = 960;
+                                  var lateralPadding = (w > maxReadingW) ? (w - maxReadingW) / 2 : 60;
                                   
                                   // Ensure we only have ONE column per page by forcing column-width to be exactly 100%
-                                  textContainer.style.width = '100vw';
-                                  textContainer.style.minWidth = '100vw';
-                                  textContainer.style.columnWidth = '100vw';
+                                  textContainer.style.width = '100%';
+                                  textContainer.style.minWidth = '100%';
+                                  textContainer.style.columnWidth = '100%'; 
                                   textContainer.style.columnGap = '0px';
                                   textContainer.style.height = h + 'px';
-                                  textContainer.style.setProperty('padding', '0', 'important');
+                                  textContainer.style.setProperty('padding-left', lateralPadding + 'px', 'important');
+                                  textContainer.style.setProperty('padding-right', lateralPadding + 'px', 'important');
                                   textContainer.style.setProperty('margin', '0', 'important');
-
-                                  // Apply lateral padding to .page-content to prevent bleeding, instead of to textContainer directly
-                                  var dynamicStyle = document.getElementById('dynamic-layout-style');
-                                  if (!dynamicStyle) {
-                                      dynamicStyle = document.createElement('style');
-                                      dynamicStyle.id = 'dynamic-layout-style';
-                                      document.head.appendChild(dynamicStyle);
-                                  }
-                                  dynamicStyle.innerHTML = '.page-content { padding-left: ' + lateralPadding + 'px !important; padding-right: ' + lateralPadding + 'px !important; }';
-
                                   // Update cache after layout changes
                                   setTimeout(refreshLayoutCache, 50);
                              }
@@ -307,11 +299,7 @@ object EpubParser {
                         
                         var wRect = wrapper.getBoundingClientRect();
                         var low = 0, high = allElements.length - 1;
-                        if (window.chapterBounds && window.chapterBounds[currentChapterIndex]) {
-                            low = window.chapterBounds[currentChapterIndex].start;
-                            high = window.chapterBounds[currentChapterIndex].end;
-                        }
-                        var bestIndex = Math.max(low, Math.min(currentAnchorIndex, high));
+                        var bestIndex = currentAnchorIndex;
 
                         // Binary Search for O(log N) instead of O(N)
                         while (low <= high) {
@@ -344,7 +332,6 @@ object EpubParser {
                         
                         progressTimeout = setTimeout(function() {
                             if (layoutCache.w <= 0) refreshLayoutCache();
-                            findCurrentAnchor();
                             var cur = Math.ceil((wrapper.scrollLeft + 1) / layoutCache.w);
 
                             // Per-chapter percentage
@@ -360,10 +347,6 @@ object EpubParser {
 
                             var globalPct = totalTextLength > 0 ? Math.round((charIndex / totalTextLength) * 100) : 0;
                             if (globalPct > 100) globalPct = 100;
-                            // Ensure 0% at the very beginning
-                            if (currentChapterIndex === 0 && wrapper.scrollLeft <= 5) globalPct = 0;
-                            // Ensure 100% at the very end
-                            if (currentChapterIndex === chapterElements.length - 1 && wrapper.scrollLeft >= layoutCache.maxScroll - 5) globalPct = 100;
 
                             window.readerBridge.sendProgressInfo(globalPct + '%');
 
@@ -391,37 +374,17 @@ object EpubParser {
                              var rawChapters = textContainer.querySelectorAll('.chapter');
                              chapterElements = [];
                              chapterLengths = [];
-                             window.chapterTextCache = [];
                              totalTextLength = 0;
                              for(var k=0; k<rawChapters.length; k++) {
                                  chapterElements.push(rawChapters[k]);
-                                 var textContent = rawChapters[k].textContent || "";
-                                 window.chapterTextCache.push(textContent.toLowerCase());
-                                 var len = textContent.length || 0;
+                                 var len = rawChapters[k].textContent.length || 0;
                                  chapterLengths.push(len);
                                  totalTextLength += len;
                              }
                              
                              var rawNodes = textContainer.querySelectorAll('p, h1, h2, h3, h4, h5, h6, img, li, blockquote, .page-content div, .chapter div');
                              allElements = [];
-                             window.chapterBounds = [];
-                             var currentCh = null;
-                             var startIndex = 0;
-                             for(var i=0; i<rawNodes.length; i++) {
-                                 var node = rawNodes[i];
-                                 var ch = node.closest('.chapter');
-                                 if (ch !== currentCh) {
-                                     if (currentCh) {
-                                         window.chapterBounds.push({start: startIndex, end: allElements.length - 1});
-                                     }
-                                     startIndex = allElements.length;
-                                     currentCh = ch;
-                                 }
-                                 allElements.push(node);
-                             }
-                             if (currentCh) {
-                                 window.chapterBounds.push({start: startIndex, end: allElements.length - 1});
-                             }
+                             for(var i=0; i<rawNodes.length; i++) { allElements.push(rawNodes[i]); }
                              
                              // Show first chapter by default if no restore happened yet
                              if (!window.isRestoring) switchChapter(0, 0);
@@ -433,7 +396,6 @@ object EpubParser {
                                      var el = allNodes[j];
                                      if (el.textContent.trim().length > 0 && !ignoredTags[el.tagName]) allElements.push(el);
                                  }
-                                 window.chapterBounds = [{start: 0, end: allElements.length - 1}];
                              }
                              
                              // 2. Attach Listeners
@@ -591,26 +553,31 @@ object EpubParser {
                          if(el) {
                              var ch = el.closest('.chapter');
                              var cIdx = chapterElements.indexOf(ch);
+                             var delay = 0;
+                             if (cIdx !== -1 && cIdx !== currentChapterIndex) {
+                                 switchChapter(cIdx, "skip");
+                                 delay = 150;
+                             }
                              var jumpFn = function() {
                                  forceBreakBefore(el);
-                                 if (!el || !wrapper) return;
-                                 if (layoutCache.w <= 0) refreshLayoutCache();
-                                 var targetL = 0;
-                                 if (!el.classList.contains('chapter')) {
-                                     var rect = el.getBoundingClientRect();
-                                     var wRect = wrapper.getBoundingClientRect();
-                                     var relLeft = rect.left - wRect.left;
-                                     targetL = Math.round((wrapper.scrollLeft + relLeft) / layoutCache.w) * layoutCache.w;
-                                 }
-                                 wrapper.scrollLeft = targetL;
-                                 findCurrentAnchor();
-                                 updateProgress();
+                                 requestAnimationFrame(function() {
+                                     requestAnimationFrame(function() {
+                                         if (!el || !wrapper) return;
+                                         if (layoutCache.w <= 0) refreshLayoutCache();
+                                         var targetL = 0;
+                                         if (!el.classList.contains('chapter')) {
+                                             var rect = el.getBoundingClientRect();
+                                             var wRect = wrapper.getBoundingClientRect();
+                                             var relLeft = rect.left - wRect.left;
+                                             targetL = Math.round((wrapper.scrollLeft + relLeft) / layoutCache.w) * layoutCache.w;
+                                         }
+                                         wrapper.scrollLeft = targetL;
+                                         setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 150);
+                                     });
+                                 });
                              };
-                             if (cIdx !== -1 && cIdx !== currentChapterIndex) {
-                                 switchChapter(cIdx, "skip", jumpFn);
-                             } else {
-                                 jumpFn();
-                             }
+                             if (delay > 0) setTimeout(jumpFn, delay);
+                             else jumpFn();
                          }
                     };
                     
@@ -622,25 +589,31 @@ object EpubParser {
                              el.classList.add('active-match');
                              var ch = el.closest('.chapter');
                              var cIdx = chapterElements.indexOf(ch);
+                             var delay = 0;
+                             if (cIdx !== -1 && cIdx !== currentChapterIndex) {
+                                 switchChapter(cIdx, "skip");
+                                 delay = 150;
+                             }
                              var jumpFn = function() {
                                  forceBreakBefore(el);
-                                 if (!el || !wrapper) return;
-                                 if (layoutCache.w <= 0) refreshLayoutCache();
-                                 var targetL = 0;
-                                 if (!el.classList.contains('chapter')) {
-                                     var rect = el.getBoundingClientRect();
-                                     var wRect = wrapper.getBoundingClientRect();
-                                     var relLeft = rect.left - wRect.left;
-                                     targetL = Math.round((wrapper.scrollLeft + relLeft) / layoutCache.w) * layoutCache.w;
-                                 }
-                                 wrapper.scrollLeft = targetL;
-                                 updateProgress();
+                                 requestAnimationFrame(function() {
+                                     requestAnimationFrame(function() {
+                                        if (!el || !wrapper) return;
+                                        if (layoutCache.w <= 0) refreshLayoutCache();
+                                        var targetL = 0;
+                                        if (!el.classList.contains('chapter')) {
+                                            var rect = el.getBoundingClientRect();
+                                            var wRect = wrapper.getBoundingClientRect();
+                                            var relLeft = rect.left - wRect.left;
+                                            targetL = Math.round((wrapper.scrollLeft + relLeft) / layoutCache.w) * layoutCache.w;
+                                        }
+                                        wrapper.scrollLeft = targetL;
+                                        setTimeout(function() { updateProgress(); }, 150);
+                                     });
+                                 });
                              };
-                             if (cIdx !== -1 && cIdx !== currentChapterIndex) {
-                                 switchChapter(cIdx, "skip", jumpFn);
-                             } else {
-                                 jumpFn();
-                             }
+                             if (delay > 0) setTimeout(jumpFn, delay);
+                             else jumpFn();
                          }
                     };
 
@@ -669,18 +642,10 @@ object EpubParser {
                             searchMatches = [];
                             if (!query) { return; }
 
-                            var textNodes = [];
-                            for (var cIdx = 0; cIdx < chapterElements.length; cIdx++) {
-                                if (window.chapterTextCache && window.chapterTextCache[cIdx] && window.chapterTextCache[cIdx].indexOf(query) !== -1) {
-                                    var chEl = chapterElements[cIdx];
-                                    var walker = document.createTreeWalker(chEl, NodeFilter.SHOW_TEXT, null, false);
-                                    var node;
-                                    while (node = walker.nextNode()) {
-                                        if (node.parentNode.tagName !== 'SCRIPT' && node.parentNode.tagName !== 'STYLE') {
-                                            textNodes.push(node);
-                                        }
-                                    }
-                                }
+                            var walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
+                            var node; var textNodes = [];
+                            while(node = walker.nextNode()) { 
+                                if(node.parentNode.tagName !== 'SCRIPT' && node.parentNode.tagName !== 'STYLE') textNodes.push(node); 
                             }
 
                             var matchCount = 0;
@@ -783,7 +748,7 @@ object EpubParser {
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
                 <div style="cursor: pointer;">
-                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v1.5.0 (Stable)</div>
+                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v1.5.1 (Stable)</div>
                     
                     <div style="font-size: 14px; line-height: 1.8; margin-bottom: 20px;">
                         <div style="font-weight: bold; color: var(--text);">New in this version:</div>
