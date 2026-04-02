@@ -34,8 +34,8 @@ object EpubParser {
                         --hover-bg: ${if (colors.bg.startsWith("#2")) "rgba(255,255,255,0.08)" else "rgba(0,0,0,0.04)"};
                         --font-size: ${fontSize}px;
                         --font-family: $cssFontFamily;
-                        --line-height: 1.8;
-                        --letter-spacing: 0.03em;
+                        --line-height: 2.0;
+                        --letter-spacing: 0.06em;
                     }
 
                     /* Theme: White (Soft) */
@@ -221,24 +221,19 @@ object EpubParser {
                             chapterElements[i].classList.toggle('active-chapter', isCurrent);
                         }
                         
-                        // Force layout refresh and snap
-                        requestAnimationFrame(function() {
-                            setTimeout(function() {
-                                refreshLayoutCache();
-                                if (snapTo === 'skip') {
-                                    // Skip snapping scroll position to avoid overriding external jumps
-                                } else if (snapTo === 'end') {
-                                    wrapper.scrollLeft = layoutCache.maxScroll;
-                                } else if (typeof snapTo === 'number') {
-                                    wrapper.scrollLeft = snapTo;
-                                } else {
-                                    wrapper.scrollLeft = 0;
-                                }
-                                findCurrentAnchor();
-                                updateProgress();
-                                if (typeof callback === 'function') callback();
-                            }, 0);
-                        });
+                        refreshLayoutCache();
+                        if (snapTo === 'skip') {
+                            // Skip snapping scroll position to avoid overriding external jumps
+                        } else if (snapTo === 'end') {
+                            wrapper.scrollLeft = layoutCache.maxScroll;
+                        } else if (typeof snapTo === 'number') {
+                            wrapper.scrollLeft = snapTo;
+                        } else {
+                            wrapper.scrollLeft = 0;
+                        }
+                        findCurrentAnchor();
+                        updateProgress();
+                        if (typeof callback === 'function') callback();
                     }
 
                     window.readerRestore = function(s) {
@@ -674,14 +669,16 @@ object EpubParser {
                             searchMatches = [];
                             if (!query) { return; }
 
-                            var walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
-                            var node; var textNodes = [];
-                            while(node = walker.nextNode()) { 
-                                if(node.parentNode.tagName !== 'SCRIPT' && node.parentNode.tagName !== 'STYLE') {
-                                    var ch = node.parentElement.closest('.chapter');
-                                    var cIdx = chapterElements.indexOf(ch);
-                                    if (cIdx === -1 || (window.chapterTextCache && window.chapterTextCache[cIdx] && window.chapterTextCache[cIdx].indexOf(query) !== -1)) {
-                                        textNodes.push(node);
+                            var textNodes = [];
+                            for (var cIdx = 0; cIdx < chapterElements.length; cIdx++) {
+                                if (window.chapterTextCache && window.chapterTextCache[cIdx] && window.chapterTextCache[cIdx].indexOf(query) !== -1) {
+                                    var chEl = chapterElements[cIdx];
+                                    var walker = document.createTreeWalker(chEl, NodeFilter.SHOW_TEXT, null, false);
+                                    var node;
+                                    while (node = walker.nextNode()) {
+                                        if (node.parentNode.tagName !== 'SCRIPT' && node.parentNode.tagName !== 'STYLE') {
+                                            textNodes.push(node);
+                                        }
                                     }
                                 }
                             }
