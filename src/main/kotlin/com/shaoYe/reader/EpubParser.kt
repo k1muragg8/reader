@@ -14,7 +14,7 @@ object EpubParser {
     private fun getAppHtml(contentHtml: String, colors: ThemeColors, fontSize: Int, theme: String?, fontFamily: String?, bridgeJs: String? = null): String {
         val actualTheme = theme ?: "white"
         val actualFontFamily = fontFamily ?: "sans"
-        val appleFontStack = "'PingFang SC', 'Hiragino Sans GB', 'Heiti SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif"
+        val appleFontStack = "'-apple-system', 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Heiti SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif"
         val cssFontFamily = if (actualFontFamily == "serif") "Palatino, \"Palatino Linotype\", \"Book Antiqua\", Georgia, serif" else "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, $appleFontStack"
 
         val bridgeScript = bridgeJs ?: ""
@@ -35,7 +35,7 @@ object EpubParser {
                         --font-size: ${fontSize}px;
                         --font-family: $cssFontFamily;
                         --line-height: 1.8;
-                        --letter-spacing: 0.02em;
+                        --letter-spacing: 0.03em;
                     }
 
                     /* Theme: White (Soft) */
@@ -67,6 +67,8 @@ object EpubParser {
                         font-size: var(--font-size) !important;
                         line-height: var(--line-height);
                         letter-spacing: var(--letter-spacing);
+                        font-weight: 400;
+                        text-rendering: optimizeLegibility;
                         -webkit-font-smoothing: antialiased;
                         -moz-osx-font-smoothing: grayscale;
                         margin: 0 !important; padding: 0 !important; width: 100% !important; 
@@ -100,7 +102,7 @@ object EpubParser {
                     h2 { font-size: 1.05em !important; }
                     h3, h4, h5, h6 { font-size: 1.0em !important; }
                     
-                    p { margin: 0 !important; padding: 10px 0 !important; line-height: var(--line-height); text-align: left; letter-spacing: var(--letter-spacing); }
+                    p { margin: 0 !important; padding: 12px 0 !important; line-height: var(--line-height); text-align: left; letter-spacing: var(--letter-spacing); }
                     img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 10px auto; border-radius: 8px; break-inside: avoid; }
                     
                     /* Disable all book links */
@@ -210,7 +212,7 @@ object EpubParser {
                         }
                     };
 
-                    function switchChapter(idx, snapTo) {
+                    function switchChapter(idx, snapTo, callback) {
                         if (idx < 0 || idx >= chapterElements.length) return;
                         currentChapterIndex = idx;
                         for (var i = 0; i < chapterElements.length; i++) {
@@ -233,6 +235,7 @@ object EpubParser {
                             }
                             findCurrentAnchor();
                             updateProgress();
+                            if (typeof callback === 'function') callback();
                         }, 50);
                     }
 
@@ -387,10 +390,13 @@ object EpubParser {
                              var rawChapters = textContainer.querySelectorAll('.chapter');
                              chapterElements = [];
                              chapterLengths = [];
+                             window.chapterTextCache = [];
                              totalTextLength = 0;
                              for(var k=0; k<rawChapters.length; k++) {
                                  chapterElements.push(rawChapters[k]);
-                                 var len = rawChapters[k].textContent.length || 0;
+                                 var textContent = rawChapters[k].textContent || "";
+                                 window.chapterTextCache.push(textContent.toLowerCase());
+                                 var len = textContent.length || 0;
                                  chapterLengths.push(len);
                                  totalTextLength += len;
                              }
@@ -584,11 +590,6 @@ object EpubParser {
                          if(el) {
                              var ch = el.closest('.chapter');
                              var cIdx = chapterElements.indexOf(ch);
-                             var delay = 0;
-                             if (cIdx !== -1 && cIdx !== currentChapterIndex) {
-                                 switchChapter(cIdx, "skip");
-                                 delay = 150;
-                             }
                              var jumpFn = function() {
                                  forceBreakBefore(el);
                                  if (!el || !wrapper) return;
@@ -601,10 +602,14 @@ object EpubParser {
                                      targetL = Math.round((wrapper.scrollLeft + relLeft) / layoutCache.w) * layoutCache.w;
                                  }
                                  wrapper.scrollLeft = targetL;
-                                 setTimeout(function() { findCurrentAnchor(); updateProgress(); }, 150);
+                                 findCurrentAnchor();
+                                 updateProgress();
                              };
-                             if (delay > 0) setTimeout(jumpFn, delay);
-                             else jumpFn();
+                             if (cIdx !== -1 && cIdx !== currentChapterIndex) {
+                                 switchChapter(cIdx, "skip", jumpFn);
+                             } else {
+                                 jumpFn();
+                             }
                          }
                     };
                     
@@ -616,11 +621,6 @@ object EpubParser {
                              el.classList.add('active-match');
                              var ch = el.closest('.chapter');
                              var cIdx = chapterElements.indexOf(ch);
-                             var delay = 0;
-                             if (cIdx !== -1 && cIdx !== currentChapterIndex) {
-                                 switchChapter(cIdx, "skip");
-                                 delay = 150;
-                             }
                              var jumpFn = function() {
                                  forceBreakBefore(el);
                                  if (!el || !wrapper) return;
@@ -633,10 +633,13 @@ object EpubParser {
                                      targetL = Math.round((wrapper.scrollLeft + relLeft) / layoutCache.w) * layoutCache.w;
                                  }
                                  wrapper.scrollLeft = targetL;
-                                 setTimeout(function() { updateProgress(); }, 150);
+                                 updateProgress();
                              };
-                             if (delay > 0) setTimeout(jumpFn, delay);
-                             else jumpFn();
+                             if (cIdx !== -1 && cIdx !== currentChapterIndex) {
+                                 switchChapter(cIdx, "skip", jumpFn);
+                             } else {
+                                 jumpFn();
+                             }
                          }
                     };
 
@@ -668,7 +671,13 @@ object EpubParser {
                             var walker = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT, null, false);
                             var node; var textNodes = [];
                             while(node = walker.nextNode()) { 
-                                if(node.parentNode.tagName !== 'SCRIPT' && node.parentNode.tagName !== 'STYLE') textNodes.push(node); 
+                                if(node.parentNode.tagName !== 'SCRIPT' && node.parentNode.tagName !== 'STYLE') {
+                                    var ch = node.parentElement.closest('.chapter');
+                                    var cIdx = chapterElements.indexOf(ch);
+                                    if (cIdx === -1 || (window.chapterTextCache && window.chapterTextCache[cIdx] && window.chapterTextCache[cIdx].indexOf(query) !== -1)) {
+                                        textNodes.push(node);
+                                    }
+                                }
                             }
 
                             var matchCount = 0;
