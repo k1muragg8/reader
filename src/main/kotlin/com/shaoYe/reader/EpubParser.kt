@@ -222,21 +222,23 @@ object EpubParser {
                         }
                         
                         // Force layout refresh and snap
-                        setTimeout(function() {
-                            refreshLayoutCache();
-                            if (snapTo === 'skip') {
-                                // Skip snapping scroll position to avoid overriding external jumps
-                            } else if (snapTo === 'end') {
-                                wrapper.scrollLeft = layoutCache.maxScroll;
-                            } else if (typeof snapTo === 'number') {
-                                wrapper.scrollLeft = snapTo;
-                            } else {
-                                wrapper.scrollLeft = 0;
-                            }
-                            findCurrentAnchor();
-                            updateProgress();
-                            if (typeof callback === 'function') callback();
-                        }, 50);
+                        requestAnimationFrame(function() {
+                            setTimeout(function() {
+                                refreshLayoutCache();
+                                if (snapTo === 'skip') {
+                                    // Skip snapping scroll position to avoid overriding external jumps
+                                } else if (snapTo === 'end') {
+                                    wrapper.scrollLeft = layoutCache.maxScroll;
+                                } else if (typeof snapTo === 'number') {
+                                    wrapper.scrollLeft = snapTo;
+                                } else {
+                                    wrapper.scrollLeft = 0;
+                                }
+                                findCurrentAnchor();
+                                updateProgress();
+                                if (typeof callback === 'function') callback();
+                            }, 0);
+                        });
                     }
 
                     window.readerRestore = function(s) {
