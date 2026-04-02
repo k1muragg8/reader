@@ -35,3 +35,8 @@ tasks {
         untilBuild.set("262.*")
     }
 }
+
+tasks.register<JavaExec>("generateHtml") {
+    mainClass.set("GenerateHtmlKt")
+    classpath = sourceSets["test"].runtimeClasspath
+}

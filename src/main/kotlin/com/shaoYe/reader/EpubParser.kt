@@ -34,8 +34,8 @@ object EpubParser {
                         --hover-bg: ${if (colors.bg.startsWith("#2")) "rgba(255,255,255,0.08)" else "rgba(0,0,0,0.04)"};
                         --font-size: ${fontSize}px;
                         --font-family: $cssFontFamily;
-                        --line-height: 2.0;
-                        --letter-spacing: 0.05em;
+                        --line-height: 1.8;
+                        --letter-spacing: 0.02em;
                     }
 
                     /* Theme: White (Soft) */
@@ -79,7 +79,7 @@ object EpubParser {
                     
                     /* --- 核心优化：抗闪烁 CSS --- */
                     /* 当处于 resizing 状态时，强制关闭所有动画和吸附，像石头一样稳 */
-                    .resizing, .resizing * {
+                    .resizing, #reader-wrapper.resizing {
                         transition: none !important;
                         scroll-behavior: auto !important;
                     }
@@ -90,7 +90,6 @@ object EpubParser {
                     #content { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--bg); }
                     #reader-wrapper { flex: 1; width: 100%; height: 100%; overflow-x: scroll; overflow-y: hidden; outline: none; transition: opacity 0.2s; will-change: transform; }
                     #reader-wrapper.resizing { cursor: col-resize; opacity: 0.8; }
-                    #reader-wrapper.resizing * { transition: none !important; animation: none !important; }
                     #reader-text { height: 100%; box-sizing: border-box; column-fill: auto; position: relative; column-gap: 0; }
                     
                     .chapter { break-before: column; }
@@ -101,7 +100,7 @@ object EpubParser {
                     h2 { font-size: 1.05em !important; }
                     h3, h4, h5, h6 { font-size: 1.0em !important; }
                     
-                    p { margin: 0 !important; padding: 8px 0 !important; line-height: var(--line-height); text-align: justify; letter-spacing: var(--letter-spacing); }
+                    p { margin: 0 !important; padding: 10px 0 !important; line-height: var(--line-height); text-align: left; letter-spacing: var(--letter-spacing); }
                     img { max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 10px auto; border-radius: 8px; break-inside: avoid; }
                     
                     /* Disable all book links */
@@ -274,8 +273,8 @@ object EpubParser {
                              
                              if(w > 20) {
                                   // Scientific Optimization: Use viewport-relative widths to prevent "three-page-overlap"
-                                  var maxReadingW = 960;
-                                  var lateralPadding = (w > maxReadingW) ? (w - maxReadingW) / 2 : 60;
+                                  var maxReadingW = 860;
+                                  var lateralPadding = (w > maxReadingW) ? (w - maxReadingW) / 2 : 24;
                                   
                                   // Ensure we only have ONE column per page by forcing column-width to be exactly 100%
                                   textContainer.style.width = '100vw';
@@ -287,11 +286,13 @@ object EpubParser {
                                   textContainer.style.setProperty('margin', '0', 'important');
 
                                   // Apply lateral padding to .page-content to prevent bleeding, instead of to textContainer directly
-                                  var pageContents = document.querySelectorAll('.page-content');
-                                  for (var i = 0; i < pageContents.length; i++) {
-                                      pageContents[i].style.setProperty('padding-left', lateralPadding + 'px', 'important');
-                                      pageContents[i].style.setProperty('padding-right', lateralPadding + 'px', 'important');
+                                  var dynamicStyle = document.getElementById('dynamic-layout-style');
+                                  if (!dynamicStyle) {
+                                      dynamicStyle = document.createElement('style');
+                                      dynamicStyle.id = 'dynamic-layout-style';
+                                      document.head.appendChild(dynamicStyle);
                                   }
+                                  dynamicStyle.innerHTML = '.page-content { padding-left: ' + lateralPadding + 'px !important; padding-right: ' + lateralPadding + 'px !important; }';
 
                                   // Update cache after layout changes
                                   setTimeout(refreshLayoutCache, 50);
@@ -339,6 +340,7 @@ object EpubParser {
                         
                         progressTimeout = setTimeout(function() {
                             if (layoutCache.w <= 0) refreshLayoutCache();
+                            findCurrentAnchor();
                             var cur = Math.ceil((wrapper.scrollLeft + 1) / layoutCache.w);
 
                             // Per-chapter percentage
@@ -395,7 +397,24 @@ object EpubParser {
                              
                              var rawNodes = textContainer.querySelectorAll('p, h1, h2, h3, h4, h5, h6, img, li, blockquote, .page-content div, .chapter div');
                              allElements = [];
-                             for(var i=0; i<rawNodes.length; i++) { allElements.push(rawNodes[i]); }
+                             window.chapterBounds = [];
+                             var currentCh = null;
+                             var startIndex = 0;
+                             for(var i=0; i<rawNodes.length; i++) {
+                                 var node = rawNodes[i];
+                                 var ch = node.closest('.chapter');
+                                 if (ch !== currentCh) {
+                                     if (currentCh) {
+                                         window.chapterBounds.push({start: startIndex, end: allElements.length - 1});
+                                     }
+                                     startIndex = allElements.length;
+                                     currentCh = ch;
+                                 }
+                                 allElements.push(node);
+                             }
+                             if (currentCh) {
+                                 window.chapterBounds.push({start: startIndex, end: allElements.length - 1});
+                             }
                              
                              // Show first chapter by default if no restore happened yet
                              if (!window.isRestoring) switchChapter(0, 0);
@@ -407,6 +426,7 @@ object EpubParser {
                                      var el = allNodes[j];
                                      if (el.textContent.trim().length > 0 && !ignoredTags[el.tagName]) allElements.push(el);
                                  }
+                                 window.chapterBounds = [{start: 0, end: allElements.length - 1}];
                              }
                              
                              // 2. Attach Listeners
