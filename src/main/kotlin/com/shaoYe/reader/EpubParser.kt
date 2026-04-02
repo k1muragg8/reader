@@ -180,6 +180,7 @@ object EpubParser {
                     var chapterElements = [];
                     var chapterLengths = [];
                     var totalTextLength = 0;
+                    var chapterElementBounds = []; // Stores [startIndex, endIndex] of allElements for each chapter
 
                     // --- Global Functions (Defined early for reliability) ---
                     window.readerNext = function() { 
@@ -193,7 +194,7 @@ object EpubParser {
                                 switchChapter(currentChapterIndex + 1, 0);
                             }
                         } else {
-                            wrapper.scrollTo({ left: target, behavior: 'instant' });
+                            wrapper.scrollLeft = target;
                         }
                     };
                     window.readerPrev = function() { 
@@ -207,7 +208,7 @@ object EpubParser {
                                 switchChapter(currentChapterIndex - 1, 'end');
                             }
                         } else {
-                            wrapper.scrollTo({ left: target, behavior: 'instant' });
+                            wrapper.scrollLeft = target;
                         }
                     };
 
@@ -298,8 +299,18 @@ object EpubParser {
                         if (w <= 0) return;
                         
                         var wRect = wrapper.getBoundingClientRect();
-                        var low = 0, high = allElements.length - 1;
+
+                        // Limit search to current chapter bounds to avoid checking hidden elements (width 0)
+                        var bounds = chapterElementBounds[currentChapterIndex];
+                        if (!bounds) return;
+                        var low = bounds[0];
+                        var high = bounds[1];
                         var bestIndex = currentAnchorIndex;
+
+                        // Fallback bestIndex to within current chapter if it was out of bounds
+                        if (bestIndex < low || bestIndex > high) {
+                            bestIndex = low;
+                        }
 
                         // Binary Search for O(log N) instead of O(N)
                         while (low <= high) {
@@ -314,7 +325,7 @@ object EpubParser {
                             } else {
                                 bestIndex = mid;
                                 // Scan slightly backward to find the absolute first in this column
-                                for (var j = mid - 1; j >= Math.max(0, mid - 20); j--) {
+                                for (var j = mid - 1; j >= Math.max(bounds[0], mid - 20); j--) {
                                     var r2 = allElements[j].getBoundingClientRect();
                                     if (r2.left - wRect.left < 0) break;
                                     bestIndex = j;
@@ -332,21 +343,38 @@ object EpubParser {
                         
                         progressTimeout = setTimeout(function() {
                             if (layoutCache.w <= 0) refreshLayoutCache();
-                            var cur = Math.ceil((wrapper.scrollLeft + 1) / layoutCache.w);
+
+                            findCurrentAnchor(); // Ensure anchor is up to date
 
                             // Per-chapter percentage
                             var scrollPct = layoutCache.maxScroll > 0 ? (wrapper.scrollLeft / layoutCache.maxScroll) : 0;
 
-                            // Global percentage approximation
+                            // Global percentage using character positions
                             var charIndex = 0;
                             for (var c = 0; c < currentChapterIndex; c++) {
                                 charIndex += chapterLengths[c];
                             }
-                            var currentChapterLen = chapterLengths[currentChapterIndex] || 0;
-                            charIndex += scrollPct * currentChapterLen;
+
+                            var anchorEl = allElements[currentAnchorIndex];
+                            if (anchorEl && anchorEl.hasAttribute('data-char-offset')) {
+                                charIndex += parseInt(anchorEl.getAttribute('data-char-offset'));
+                            } else {
+                                // Fallback if anchor lacks offset
+                                var currentChapterLen = chapterLengths[currentChapterIndex] || 0;
+                                charIndex += scrollPct * currentChapterLen;
+                            }
 
                             var globalPct = totalTextLength > 0 ? Math.round((charIndex / totalTextLength) * 100) : 0;
-                            if (globalPct > 100) globalPct = 100;
+
+                            // Bounds checks for first and last pages
+                            if (currentChapterIndex === 0 && wrapper.scrollLeft <= 5) {
+                                globalPct = 0;
+                            } else if (currentChapterIndex === chapterElements.length - 1 && wrapper.scrollLeft >= layoutCache.maxScroll - 5) {
+                                globalPct = 100;
+                            } else {
+                                if (globalPct > 100) globalPct = 100;
+                                if (globalPct < 0) globalPct = 0;
+                            }
 
                             window.readerBridge.sendProgressInfo(globalPct + '%');
 
@@ -386,9 +414,6 @@ object EpubParser {
                              allElements = [];
                              for(var i=0; i<rawNodes.length; i++) { allElements.push(rawNodes[i]); }
                              
-                             // Show first chapter by default if no restore happened yet
-                             if (!window.isRestoring) switchChapter(0, 0);
-                             
                              if (allElements.length === 0) {
                                  var allNodes = textContainer.querySelectorAll('*');
                                  var ignoredTags = {'STYLE':1, 'SCRIPT':1, 'META':1, 'HEAD':1, 'TITLE':1, 'NOSCRIPT':1};
@@ -397,6 +422,71 @@ object EpubParser {
                                      if (el.textContent.trim().length > 0 && !ignoredTags[el.tagName]) allElements.push(el);
                                  }
                              }
+
+                             // Calculate character offset for each element
+                             for (var i = 0; i < chapterElements.length; i++) {
+                                 var chap = chapterElements[i];
+                                 var walker = document.createTreeWalker(chap, NodeFilter.SHOW_TEXT, null, false);
+                                 var offset = 0;
+                                 var lastEl = null;
+
+                                 var elementsInChapter = [];
+                                 for (var j = 0; j < allElements.length; j++) {
+                                     if (chap.contains(allElements[j])) {
+                                         elementsInChapter.push(allElements[j]);
+                                     }
+                                 }
+
+                                 var elIdx = 0;
+                                 while (walker.nextNode()) {
+                                     var node = walker.currentNode;
+                                     if (node.parentNode.tagName === 'SCRIPT' || node.parentNode.tagName === 'STYLE') continue;
+
+                                     // Find which element contains this text node
+                                     var parentEl = node.parentElement;
+                                     while (parentEl && parentEl !== chap && elementsInChapter.indexOf(parentEl) === -1) {
+                                         parentEl = parentEl.parentElement;
+                                     }
+
+                                     if (parentEl && elementsInChapter.indexOf(parentEl) !== -1) {
+                                         if (parentEl !== lastEl) {
+                                             if (!parentEl.hasAttribute('data-char-offset')) {
+                                                 parentEl.setAttribute('data-char-offset', offset);
+                                             }
+                                             lastEl = parentEl;
+                                         }
+                                     }
+
+                                     offset += node.nodeValue.length;
+                                 }
+                                 chapterLengths[i] = offset; // override with accurate length
+                             }
+
+                             totalTextLength = 0;
+                             for (var i = 0; i < chapterLengths.length; i++) {
+                                 totalTextLength += chapterLengths[i];
+                             }
+
+                             // Calculate element bounds for each chapter
+                             chapterElementBounds = [];
+                             var currentChapIdx = 0;
+                             var startIdx = 0;
+                             for (var i = 0; i < allElements.length; i++) {
+                                 var el = allElements[i];
+                                 while (currentChapIdx < chapterElements.length && !chapterElements[currentChapIdx].contains(el)) {
+                                     chapterElementBounds.push([startIdx, Math.max(0, i - 1)]);
+                                     startIdx = i;
+                                     currentChapIdx++;
+                                 }
+                             }
+                             while (currentChapIdx < chapterElements.length) {
+                                 chapterElementBounds.push([startIdx, Math.max(0, allElements.length - 1)]);
+                                 startIdx = allElements.length;
+                                 currentChapIdx++;
+                             }
+
+                             // Show first chapter by default if no restore happened yet
+                             if (!window.isRestoring) switchChapter(0, 0);
                              
                              // 2. Attach Listeners
                              window.addEventListener('blur', function() { document.body.classList.add('focus-lost'); });
