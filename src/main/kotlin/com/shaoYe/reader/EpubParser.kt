@@ -854,7 +854,7 @@ object EpubParser {
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
                 <div style="cursor: pointer;">
-                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v1.5.1 (Stable)</div>
+                    <div style="font-size: 20px; font-weight: 500; margin-bottom: 15px;">Reader Master v1.5.2 (Stable)</div>
                     
                     <div style="font-size: 14px; line-height: 1.8; margin-bottom: 20px;">
                         <div style="font-weight: bold; color: var(--text);">New in this version:</div>

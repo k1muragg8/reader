@@ -63,7 +63,7 @@ Reader Master は、IDE を離れることなく技術書を読みた開発者�
 
 ## 📝 更新日志 (Changelog)
 
-### v1.5.1 (Current)
+### v1.5.2 (Current)
 - **[EN]** Optimized default font size to perfectly align with IDE editor font size.
 - **[CN]** 优化了默认字体大小设置，使其默认与 IDE 编辑器字体大小对齐。
 - **[JP]** デフォルトのフォントサイズを最適化し、IDE エディタのサイズと完全に一致させました。
